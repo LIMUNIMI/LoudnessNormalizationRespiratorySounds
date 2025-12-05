@@ -1,0 +1,14 @@
+DataAugmentator.py
+essenti+coral.pdf
+evaluate_clinic_augmented.py
+evaluate_clinic.py
+evaluate_micro.py
+file_utils.py
+main_coral_devloc.py
+main_standalone.py
+main.py
+nome_file.csv
+norm_and_feat_utilities.py
+normalize_by_category.py
+pre-proc_coral_cross-validation_class-weighting.py
+train_only_ref_coral.py
