@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Callable
 from tqdm import tqdm
 
@@ -40,11 +40,13 @@ class Config:
 
     # Clustering Macros
     n_clusters : int = 5
-    cluster_features : list[str] = ["rms", "zcr", "centroid", "flux", "rolloff", "flatness"]
+    cluster_features: list[str] = field(
+        default_factory=lambda: ["rms", "zcr", "centroid", "flux", "rolloff", "flatness"]
+    )
     random_state : int = 42
 
 # ==== Notes ====
-# , centroid, flux, rolloff, flatness
+#
 # ==== End of Notes ====
 
 # ==== Load Wrappers ====
@@ -219,27 +221,31 @@ def load_dataset(audio_dir: str, label_dir: str) -> Tuple[List[str], np.ndarray]
     return files, labels
 
 # ==== Clustering ====
-def compute_cluster_features(paths: List[str], loader_fn: Callable[[str, int], np.ndarray], cfg: Config, apply_filtering: bool = False) -> np.ndarray:
+def compute_cluster_features(paths: List[str], loader_fn: Callable[[str, int], np.ndarray], cfg: Config, apply_filtering: bool = False, features: list[str] = None) -> np.ndarray:
     vals = []
     for p in tqdm(paths, desc="Intensity Features"):
         y = loader_fn(p, cfg.sample_rate)
         if apply_filtering:
             y = apply_filters(y, cfg=cfg, use_bp=True)
         
-        # Energy features
-        rms = es.RMS()(y)
-        zcr = es.ZeroCrossingRate()(y)
-        
-        # Spectral features
+        # Generating spectrum
         frame = y[:min(len(y), 2048)]
         spec = es.Spectrum()(es.Windowing(type='hann')(frame))
-        centroid = es.Centroid()(spec)
-        flux = es.Flux()(spec)
-        rolloff = es.RollOff()(spec)
-        flatness = es.Flatness()(spec)
 
-        vals.append([rms, zcr, centroid, flux, rolloff, flatness])
-    # Ensure output is np.float64 for sklearn compatibility
+        # Feature map
+        feature_map = {
+            "rms": es.RMS()(y),
+            "zcr": es.ZeroCrossingRate()(y),
+            "centroid": es.Centroid()(spec),
+            "flux": es.Flux()(spec),
+            "rolloff": es.RollOff()(spec),
+            "flatness": es.Flatness()(spec)
+        }
+
+        # Select only requested features
+        selected = [feature_map[f] for f in features if f in feature_map]
+        vals.append(selected)
+
     return np.array(vals, dtype=np.float64)
 
 def fit_kmeans(features: np.ndarray, cfg: Config) -> KMeans:
@@ -286,7 +292,7 @@ def run_mono(paths: List[str], labels: np.ndarray, cfg: Config, use_filtering: b
     results['mono_median'] = evaluate(X, labels, cfg)
 
     # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering)
+    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering, features=cfg.cluster_features)
     km = fit_kmeans(intensity, cfg)
 
     scaler = StandardScaler()
@@ -349,7 +355,7 @@ def run_eqloud(paths: List[str], labels: np.ndarray, cfg: Config, use_filtering:
     results['eqloud_median'] = evaluate(X, labels, cfg)
 
     # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering)
+    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering, features=cfg.cluster_features)
     km = fit_kmeans(intensity, cfg)
 
     scaler = StandardScaler()
