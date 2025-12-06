@@ -1,0 +1,58 @@
+import numpy as np
+from config import Config
+
+from typing import List, Tuple, Dict, Callable
+
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline as SKPipeline
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, recall_score
+
+# ==== Classification ====
+def evaluate(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]:
+    results = {}
+
+    cv = StratifiedKFold(n_splits=cfg.kfolds, shuffle=True, random_state=cfg.random_state)
+
+    # kNN Classifier
+    knn_clf = SKPipeline([
+        ('scaler', StandardScaler()),
+        ('knn', KNeighborsClassifier(n_neighbors=5))
+    ])
+    acc_knn = cross_val_score(knn_clf, X, y, cv=cv, scoring='accuracy').mean()
+    results['knn_accuracy'] = acc_knn
+
+    # SVM RBF Classifier
+    svm_clf = SKPipeline([
+        ('scaler', StandardScaler()),
+        ('svm', SVC(kernel='rbf', C=1.0, gamma='scale'))
+    ])
+    acc_svm = cross_val_score(svm_clf, X, y, cv=cv, scoring='accuracy').mean()
+    results['svm_accuracy'] = acc_svm
+
+    y = np.array(y)
+    for name, clf in [('knn', knn_clf), ('svm', svm_clf)]:
+        accs, sens, specs = [], [], []
+        
+        for train_idx, test_idx in cv.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            clf.fit(X_train, y_train)
+            y_pred = clf.predict(X_test)
+
+            accs.append(accuracy_score(y_test, y_pred))
+
+            sens.append(recall_score(y_test, y_pred, pos_label=1, average='weighted'))
+
+            specs.append(recall_score(y_test, y_pred, pos_label=0, average='weighted'))
+
+        results[f'{name}_accuracy'] = np.mean(accs)
+        results[f'{name}_sensitivity'] = np.mean(sens)
+        results[f'{name}_specificity'] = np.mean(specs)
+
+
+
+    return results

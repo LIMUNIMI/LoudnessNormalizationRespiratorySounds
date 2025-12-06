@@ -1,0 +1,27 @@
+import numpy as np
+import essentia
+import essentia.standard as es
+from config import Config
+
+
+# ==== Duration Normalization Utilities ====
+def normalize_duration(audio: np.ndarray, sample_rate: int, target_length: int) -> np.ndarray:
+    target_samples = target_length * sample_rate
+    if audio.shape[0] == target_samples:
+        return audio
+    elif audio.shape[0] < target_samples:
+        return np.pad(audio, (0, target_samples - audio.shape[0]), mode='constant')
+    else:
+        return audio[:target_samples]
+
+# ==== Loudness Normalization Utilities ====
+def normalize_by_rms(audio: np.ndarray, eps: float = 1e-8) -> np.ndarray:
+    rms = es.RMS()(audio)
+    return audio / (rms + eps)
+
+def normalize_by_median(audio: np.ndarray, eps: float = 1e-8) -> np.ndarray:
+    median = np.median(np.abs(audio))
+    return audio / (median + eps)
+
+def normalize_by_scalar(audio: np.ndarray, scalar: float, eps: float = 1e-8) -> np.ndarray:
+    return audio / (scalar + eps)
