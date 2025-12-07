@@ -66,6 +66,7 @@ def evaluate_auto(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]
     auto_clf = AutoSklearnClassifier(
         time_left_for_this_task=cfg.autosklearn_time,
         per_run_time_limit=cfg.autosklearn_per_run,
+        memory_limit=cfg.autosklearn_memory,
         seed=cfg.random_state,
         resampling_strategy=cv,
         resampling_strategy_arguments={'folds' : cfg.kfolds}

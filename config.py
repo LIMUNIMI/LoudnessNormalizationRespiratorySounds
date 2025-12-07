@@ -28,3 +28,4 @@ class Config:
     # Automatic Classification
     autosklearn_time : int = 10
     autosklearn_per_run : int = 10
+    autosklearn_memory : int = 4096
