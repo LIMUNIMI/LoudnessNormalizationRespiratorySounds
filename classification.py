@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline as SKPipeline
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, recall_score
+from auto_sklearn2.classifier import AutoSklearnClassifier
 
 # ==== Classification ====
 def evaluate(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]:
@@ -53,6 +54,43 @@ def evaluate(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]:
         results[f'{name}_sensitivity'] = np.mean(sens)
         results[f'{name}_specificity'] = np.mean(specs)
 
+
+
+    return results
+
+def evaluate_auto(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]:
+    results = {}
+
+    cv = StratifiedKFold(n_splits=cfg.kfolds, shuffle=True, random_state=cfg.random_state)
+
+    auto_clf = AutoSklearnClassifier(
+        #time_left_for_this_task=cfg.autosklearn_time,
+        time_limit=cfg.autosklearn_per_run,
+        #memory_limit=cfg.autosklearn_memory,
+        #seed=cfg.random_state,
+        #resampling_strategy=cv,
+        #resampling_strategy_arguments={'folds' : cfg.kfolds}
+    )
+
+    acc, sens, specs = [], [], []
+    y = np.array(y)
+
+    for train_idx, test_idx in cv.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            auto_clf.fit(X_train, y_train)
+            y_pred = auto_clf.predict(X_test)
+
+            acc.append(accuracy_score(y_test, y_pred))
+
+            sens.append(recall_score(y_test, y_pred, pos_label=1, average='weighted'))
+
+            specs.append(recall_score(y_test, y_pred, pos_label=0, average='weighted'))
+
+    results[f'auto_accuracy'] = np.mean(acc)
+    results[f'auto_sensitivity'] = np.mean(sens)
+    results[f'auto_specificity'] = np.mean(specs)
 
 
     return results
