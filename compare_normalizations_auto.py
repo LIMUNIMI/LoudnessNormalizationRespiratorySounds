@@ -219,7 +219,7 @@ def main():
     def print_results(title: str, res: Dict[str, Dict[str, float]]):
         print(f"\n=== {title} ===")
         for k, v in res.items():
-            print(f"{k:16s} | kNN acc: {v['knn_accuracy']:.4f} | SVM acc: {v['svm_accuracy']:.4f}")
+            print(f"{k:16s} | Auto acc: {v['auto_accuracy']:.4f}")
             #print(f"{k:16s} | kNN sen: {v['knn_sensitivity']:.4f} | SVM sen: {v['svm_sensitivity']:.4f}")
             #print(f"{k:16s} | kNN spe: {v['knn_specificity']:.4f} | SVM spe: {v['svm_specificity']:.4f}")
 
