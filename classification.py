@@ -95,7 +95,7 @@ def evaluate_auto(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]
 
     return results
 
-def evaluate_auto_official_split(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, cfg: Config) -> dict[str, float]:
+def evaluate_auto_official(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, cfg: Config) -> dict[str, float]:
     results = {}
 
     auto_clf = AutoSklearnClassifier(

@@ -32,62 +32,6 @@ def load_eqloud(path: str, sample_rate: int) -> np.ndarray:
 # ==== Pipelines ====
 # ===================
 
-# ==== Mono Loading (statistical) ====
-def run_mono(paths: List[str], labels: np.ndarray, cfg: Config, use_filtering: bool = True, use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
-    results = {}
-
-    # Sample Loading
-    audio_list = []
-    for p in tqdm(paths, desc="Mono Loading"):
-        y = load_mono(p, cfg.sample_rate)
-        if use_filtering:
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-        
-        audio_list.append(y)
-    
-    # ---- Pipe A: Mean-based Normalization ----
-    feats = []
-    for y in audio_list:
-        y_norm = normalize_by_rms(y)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['mono_rms'] = evaluate_auto(X, labels, cfg)
-
-    # ---- Pipe B: Median-based Normalization ----
-    feats = []
-    for y in audio_list:
-        y_norm = normalize_by_median(y)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['mono_median'] = evaluate_auto(X, labels, cfg)
-
-    # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering, features=cfg.cluster_features)
-    km = fit_kmeans(intensity, cfg)
-
-    scaler = StandardScaler()
-    intensity_scaled = scaler.fit_transform(intensity)
-
-    feats = []
-    for y, feat in zip(audio_list, intensity_scaled):
-        # Ensure feat is np.float64 for sklearn
-        feat = np.asarray(feat, dtype=np.float64)
-        cluster_id = km.predict([feat])[0]
-        # Ensure cluster_members is also np.float64
-        cluster_members = intensity_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['mono_cluster'] = evaluate_auto(X, labels, cfg)
-
-    return results
-
 def run_mono_official(train_paths: List[str], test_paths: List[str],
                       train_labels: np.ndarray, test_labels: np.ndarray,
                       cfg: Config, use_filtering: bool = True,
@@ -155,70 +99,6 @@ def run_mono_official(train_paths: List[str], test_paths: List[str],
     results['mono_cluster'] = evaluate_auto_official(X_train, train_labels, X_test, test_labels, cfg)
 
     return results
-
-# ==== EqLoud Loading (perceptive) ====
-def run_eqloud(paths: List[str], labels: np.ndarray, cfg: Config, use_filtering: bool = True, use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
-    results = {}
-    filtered_dir = "filtered_data/"
-
-    # Sample Loading
-    audio_list = []
-    for p in tqdm(paths, desc="EqLoud Loading"):
-        if use_filtering:
-            print("[DEBUG]: Using filtering for EqLoud")
-            y = load_mono(p, cfg.sample_rate)
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-            filtered_path = os.path.join(filtered_dir, os.path.basename(p))
-            es.MonoWriter(filename=filtered_path, sampleRate=cfg.sample_rate)(y)
-            y = load_eqloud(filtered_path, cfg.sample_rate)
-        else:
-            y = load_eqloud(p, cfg.sample_rate)
-        
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-
-        audio_list.append(y)
-    
-    # ---- Pipe A: Mean-based Normalization ----
-    feats = []
-    for y in audio_list:
-        y_norm = normalize_by_rms(y)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['eqloud_rms'] = evaluate_auto(X, labels, cfg)
-
-    # ---- Pipe B: Median-based Normalization ----
-    feats = []
-    for y in audio_list:
-        y_norm = normalize_by_median(y)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['eqloud_median'] = evaluate_auto(X, labels, cfg)
-
-    # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity = compute_cluster_features(paths, load_mono, cfg, apply_filtering=use_filtering, features=cfg.cluster_features)
-    km = fit_kmeans(intensity, cfg)
-
-    scaler = StandardScaler()
-    intensity_scaled = scaler.fit_transform(intensity)
-
-    feats = []
-    for y, feat in zip(audio_list, intensity_scaled):
-        # Ensure feat is np.float64 for sklearn
-        feat = np.asarray(feat, dtype=np.float64)
-        cluster_id = km.predict([feat])[0]
-        # Ensure cluster_members is also np.float64
-        cluster_members = intensity_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats.append(extract_features(y_norm, cfg=cfg))
-    
-    X = np.vstack(feats)
-    results['eqloud_cluster'] = evaluate_auto(X, labels, cfg)
-
-    return results
-
 
 def run_eqloud_official(train_paths: List[str], test_paths: List[str],
                         train_labels: np.ndarray, test_labels: np.ndarray,
@@ -317,11 +197,14 @@ def main():
     train_labels, test_labels = load_labels_split(dataset_directory, metadata_directory, official_split_directory)
     from collections import Counter
 
-    assert len(paths) == len(labels), "ERROR: Paths and Labels not in same number."
-    assert len(paths) > 0, "ERROR: Can't find any path."
-
     # Getting official split infos
-    train_paths, test_paths = load_train_test_split(official_split_directory)
+    train_paths, test_paths = load_train_test_split(official_split_directory, dataset_directory)
+
+    assert len(train_paths) == len(train_labels), "ERROR: Train paths and Labels not in same number."
+    assert len(train_paths) > 0, "ERROR: Can't find any train path."
+
+    assert len(test_paths) == len(test_labels), "ERROR: Test paths and Labels not in same number."
+    assert len(test_paths) > 0, "ERROR: Can't find any test path."
 
     # Running Mono Pipelines
     print("[DEBUG]: Running Mono Pipelines...\n")
@@ -337,7 +220,7 @@ def main():
     def print_results(title: str, res: Dict[str, Dict[str, float]]):
         print(f"\n=== {title} ===")
         for k, v in res.items():
-            print(f"{k:16s} | Auto acc: {v['auto_accuracy']:.4f}")
+            print(f"{k:16s} | Auto acc: {v['auto_accuracy_official_split']:.4f}")
             #print(f"{k:16s} | kNN sen: {v['knn_sensitivity']:.4f} | SVM sen: {v['svm_sensitivity']:.4f}")
             #print(f"{k:16s} | kNN spe: {v['knn_specificity']:.4f} | SVM spe: {v['svm_specificity']:.4f}")
 

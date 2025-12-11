@@ -55,15 +55,23 @@ def load_dataset(audio_dir: str, label_dir: str) -> Tuple[List[str], np.ndarray]
         
     return files, labels
 
-def load_train_test_split(split_file: str) -> tuple[list[str], list[str]]:
+def load_train_test_split(split_file: str, dir: str) -> tuple[list[str], list[str]]:
     train_paths, test_paths = [], []
     with open(split_file, "r") as f:
-        for line in f
-        fname, set_type = line.strip().split()
-        if set_type.lower() == "train":
-            train_paths.append(fname)
-        elif set_type.lower() == "test":
-            test_paths.append(fname)
+        for line in f:
+            fname, set_type = line.strip().split()
+            # Normalizza estensione
+            if not fname.lower().endswith(".wav"):
+                fname = fname + ".wav"
+            else:
+                # Se è .WAV maiuscolo, convertilo
+                fname = fname[:-4] + ".wav"
+            path = os.path.join(dir, fname)
+
+            if set_type.lower() == "train":
+                train_paths.append(path)
+            elif set_type.lower() == "test":
+                test_paths.append(path)
     return train_paths, test_paths
 
 def load_labels_split(audio_dir: str, label_file: str, split_file: str):
