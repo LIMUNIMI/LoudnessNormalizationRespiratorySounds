@@ -8,7 +8,7 @@ class Config:
     sample_rate : int = 44100
 
     # Audio Processing Macros
-    target_duration : int = 10
+    target_duration : int = 60
     bandpass_frequency : float = 1150.0
     bandpass_band : float = 1700.0
     window_size : float = 0.025

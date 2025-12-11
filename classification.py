@@ -95,17 +95,41 @@ def evaluate_auto(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]
 
     return results
 
-def evaluate_auto_official(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, cfg: Config) -> dict[str, float]:
+def evaluate_auto_official(X_train: np.ndarray, y_train: np.ndarray,
+                                 X_test: np.ndarray, y_test: np.ndarray,
+                                 cfg: Config) -> dict[str, float]:
     results = {}
 
-    auto_clf = AutoSklearnClassifier(
-        time_limit=cfg.autosklearn_time
-    )
+    # === Cross Validation solo sul train ufficiale ===
+    cv = StratifiedKFold(n_splits=cfg.kfolds, shuffle=True, random_state=cfg.random_state)
 
-    auto_clf.fit(X_train, y_train)
+    cv_acc, cv_sens, cv_spec = [], [], []
+    y_train = np.array(y_train)
 
-    y_pred = auto_clf.predict(X_test)
+    for train_idx, val_idx in cv.split(X_train, y_train):
+        X_tr, X_val = X_train[train_idx], X_train[val_idx]
+        y_tr, y_val = y_train[train_idx], y_train[val_idx]
 
-    results['auto_accuracy_official_split'] = accuracy_score(y_test, y_pred)
+        auto_clf = AutoSklearnClassifier(time_limit=cfg.autosklearn_time)
+        auto_clf.fit(X_tr, y_tr)
+        y_pred_val = auto_clf.predict(X_val)
+
+        cv_acc.append(accuracy_score(y_val, y_pred_val))
+        cv_sens.append(recall_score(y_val, y_pred_val, pos_label=1, average='weighted'))
+        cv_spec.append(recall_score(y_val, y_pred_val, pos_label=0, average='weighted'))
+
+    results['auto_accuracy_intra_train_cv'] = np.mean(cv_acc)
+    results['auto_sensitivity_intra_train_cv'] = np.mean(cv_sens)
+    results['auto_specificity_intra_train_cv'] = np.mean(cv_spec)
+
+    # === Fit finale sul train completo ===
+    final_clf = AutoSklearnClassifier(time_limit=cfg.autosklearn_time)
+    final_clf.fit(X_train, y_train)
+    y_pred_test = final_clf.predict(X_test)
+
+    results['auto_accuracy_official_split'] = accuracy_score(y_test, y_pred_test)
+    results['auto_sensitivity_official_split'] = recall_score(y_test, y_pred_test, pos_label=1, average='weighted')
+    results['auto_specificity_official_split'] = recall_score(y_test, y_pred_test, pos_label=0, average='weighted')
+
     return results
 
