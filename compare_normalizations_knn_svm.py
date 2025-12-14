@@ -4,6 +4,9 @@ import pandas as pd
 from typing import List, Tuple, Dict
 from tqdm import tqdm
 
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+
 import essentia.standard as es
 
 
@@ -62,43 +65,53 @@ def load_eqloud(path: str, sample_rate: int) -> np.ndarray:
         
     return files, labels
 
-  
+
+# === Multiprocessing Utils ===
+def preprocess_file(path: str, cfg: Config, use_filtering: bool) -> np.ndarray:
+    y = load_mono(path, cfg.sample_rate)
+    if use_filtering:
+        y = apply_filters(y, cfg=cfg, use_bp=True)
+    y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=cfg.target_duration)
+    return y
+
+def preprocess_eqloud(path: str, cfg: Config, use_filtering: bool, filtered_dir: str):
+    if use_filtering:
+        y = load_mono(path, cfg.sample_rate)
+        y = apply_filters(y, cfg=cfg, use_bp=True)
+        filtered_path = os.path.join(filtered_dir, os.path.basename(path))
+        es.MonoWriter(filename=filtered_path, sampleRate=cfg.sample_rate)(y)
+        y = load_eqloud(filtered_path, cfg.sample_rate)
+    else:
+        y = load_eqloud(path, cfg.sample_rate)
+    y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=cfg.target_duration)
+    return y
+
 # ===================
 # ==== Pipelines ====
 # ===================
 
+# --- Running Mono Process ---
 def run_mono(train_paths: List[str], test_paths: List[str],
-                      train_labels: np.ndarray, test_labels: np.ndarray,
-                      cfg: Config, use_filtering: bool = True,
-                      use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
+             train_labels: np.ndarray, test_labels: np.ndarray,
+             cfg: Config, use_filtering: bool = True,
+             use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
     results = {}
 
-    # === Sample Loading (train) ===
-    train_audio = []
-    for p in tqdm(train_paths, desc="Mono Loading - Train"):
-        y = load_mono(p, cfg.sample_rate)
-        if use_filtering:
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-        train_audio.append(y)
-
-    # === Sample Loading (test) ===
-    test_audio = []
-    for p in tqdm(test_paths, desc="Mono Loading - Test"):
-        y = load_mono(p, cfg.sample_rate)
-        if use_filtering:
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-        test_audio.append(y)
+    # === Parallel Sample Loading ===
+    with ProcessPoolExecutor() as executor:
+        train_audio = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=use_filtering), train_paths))
+        test_audio  = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=use_filtering), test_paths))
 
     # ---- Pipe A: Mean-based Normalization ----
-    X_train = np.vstack([extract_features(normalize_by_rms(y), cfg=cfg) for y in train_audio])
-    X_test  = np.vstack([extract_features(normalize_by_rms(y), cfg=cfg) for y in test_audio])
+    with ProcessPoolExecutor() as executor:
+        X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
+        X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
     results['mono_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     # ---- Pipe B: Median-based Normalization ----
-    X_train = np.vstack([extract_features(normalize_by_median(y), cfg=cfg) for y in train_audio])
-    X_test  = np.vstack([extract_features(normalize_by_median(y), cfg=cfg) for y in test_audio])
+    with ProcessPoolExecutor() as executor:
+        X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
+        X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
     results['mono_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     # ---- Pipe C: K-Means Clustering Normalization ----
@@ -114,20 +127,11 @@ def run_mono(train_paths: List[str], test_paths: List[str],
     intensity_train_scaled = scaler.fit_transform(intensity_train)
     intensity_test_scaled  = scaler.transform(intensity_test)
 
-    feats_train, feats_test = [], []
-    for y, feat in zip(train_audio, intensity_train_scaled):
-        cluster_id = km.predict([feat])[0]
-        cluster_members = intensity_train_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats_train.append(extract_features(y_norm, cfg=cfg))
-
-    for y, feat in zip(test_audio, intensity_test_scaled):
-        cluster_id = km.predict([feat])[0]
-        cluster_members = intensity_train_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats_test.append(extract_features(y_norm, cfg=cfg))
+    with ProcessPoolExecutor() as executor:
+        feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                        zip(train_audio, intensity_train_scaled)))
+        feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                        zip(test_audio, intensity_test_scaled)))
 
     X_train = np.vstack(feats_train)
     X_test  = np.vstack(feats_test)
@@ -135,50 +139,30 @@ def run_mono(train_paths: List[str], test_paths: List[str],
 
     return results
 
+# --- Running EqLoud Process ---
 def run_eqloud(train_paths: List[str], test_paths: List[str],
-                        train_labels: np.ndarray, test_labels: np.ndarray,
-                        cfg: Config, use_filtering: bool = True,
-                        use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
+               train_labels: np.ndarray, test_labels: np.ndarray,
+               cfg: Config, use_filtering: bool = True,
+               use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
     results = {}
     filtered_dir = "filtered_data/"
     os.makedirs(filtered_dir, exist_ok=True)
 
-    # === Sample Loading (train) ===
-    train_audio = []
-    for p in tqdm(train_paths, desc="EqLoud Loading - Train"):
-        if use_filtering:
-            y = load_mono(p, cfg.sample_rate)
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-            filtered_path = os.path.join(filtered_dir, os.path.basename(p))
-            es.MonoWriter(filename=filtered_path, sampleRate=cfg.sample_rate)(y)
-            y = load_eqloud(filtered_path, cfg.sample_rate)
-        else:
-            y = load_eqloud(p, cfg.sample_rate)
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-        train_audio.append(y)
-
-    # === Sample Loading (test) ===
-    test_audio = []
-    for p in tqdm(test_paths, desc="EqLoud Loading - Test"):
-        if use_filtering:
-            y = load_mono(p, cfg.sample_rate)
-            y = apply_filters(y, cfg=cfg, use_bp=True)
-            filtered_path = os.path.join(filtered_dir, os.path.basename(p))
-            es.MonoWriter(filename=filtered_path, sampleRate=cfg.sample_rate)(y)
-            y = load_eqloud(filtered_path, cfg.sample_rate)
-        else:
-            y = load_eqloud(p, cfg.sample_rate)
-        y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=10)
-        test_audio.append(y)
+    # === Parallel Sample Loading ===
+    with ProcessPoolExecutor() as executor:
+        train_audio = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, filtered_dir=filtered_dir), train_paths))
+        test_audio  = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, filtered_dir=filtered_dir), test_paths))
 
     # ---- Pipe A: Mean-based Normalization ----
-    X_train = np.vstack([extract_features(normalize_by_rms(y), cfg=cfg) for y in train_audio])
-    X_test  = np.vstack([extract_features(normalize_by_rms(y), cfg=cfg) for y in test_audio])
+    with ProcessPoolExecutor() as executor:
+        X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
+        X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
     results['eqloud_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     # ---- Pipe B: Median-based Normalization ----
-    X_train = np.vstack([extract_features(normalize_by_median(y), cfg=cfg) for y in train_audio])
-    X_test  = np.vstack([extract_features(normalize_by_median(y), cfg=cfg) for y in test_audio])
+    with ProcessPoolExecutor() as executor:
+        X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
+        X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
     results['eqloud_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     # ---- Pipe C: K-Means Clustering Normalization ----
@@ -194,20 +178,11 @@ def run_eqloud(train_paths: List[str], test_paths: List[str],
     intensity_train_scaled = scaler.fit_transform(intensity_train)
     intensity_test_scaled  = scaler.transform(intensity_test)
 
-    feats_train, feats_test = [], []
-    for y, feat in zip(train_audio, intensity_train_scaled):
-        cluster_id = km.predict([feat])[0]
-        cluster_members = intensity_train_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats_train.append(extract_features(y_norm, cfg=cfg))
-
-    for y, feat in zip(test_audio, intensity_test_scaled):
-        cluster_id = km.predict([feat])[0]
-        cluster_members = intensity_train_scaled[km.labels_ == cluster_id]
-        cluster_scalar = float(np.mean(cluster_members))
-        y_norm = normalize_by_scalar(y, cluster_scalar)
-        feats_test.append(extract_features(y_norm, cfg=cfg))
+    with ProcessPoolExecutor() as executor:
+        feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                        zip(train_audio, intensity_train_scaled)))
+        feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                        zip(test_audio, intensity_test_scaled)))
 
     X_train = np.vstack(feats_train)
     X_test  = np.vstack(feats_test)
@@ -223,7 +198,7 @@ def run_eqloud(train_paths: List[str], test_paths: List[str],
 # ==== Main Definition ====
 def main():
     print("[DEBUG]: Configuring files...\n")
-    cfg = Config(sample_rate=44100, n_mfcc=13, n_clusters=3, kfolds=5, random_state=42)
+    cfg = Config()
 
     dataset_directory = "resampled_data/"
     official_split_directory = "metadata/ICBHI_challenge_train_test.txt"
@@ -240,16 +215,6 @@ def main():
     assert len(test_paths) == len(test_labels), "ERROR: Test paths and Labels not in same number."
     assert len(test_paths) > 0, "ERROR: Can't find any test path."
 
-    # Running Mono Pipelines
-    print("[DEBUG]: Running Mono Pipelines with official split...\n")
-    #res_mono = run_mono(paths, labels, cfg, use_filtering=True, use_global_scalars=False)
-    res_mono = run_mono(train_paths=train_paths, test_paths=test_paths, train_labels=train_labels, test_labels=test_labels, cfg=cfg, use_filtering=True, use_global_scalars=False)
-
-    # Running EqLoud Pipelines
-    print("[DEBUG]: Running EqLoud Pipelines with official split...\n")
-    #res_eqloud = run_eqloud(paths, labels, cfg, use_filtering=True, use_global_scalars=False)
-    res_eqloud = run_eqloud(train_paths=train_paths, test_paths=test_paths, train_labels=train_labels, test_labels=test_labels, cfg=cfg, use_filtering=True, use_global_scalars=False)
-
     # Printing Results
     def print_results(title: str, res: Dict[str, Dict[str, float]]):
         print(f"\n=== {title} ===")
@@ -258,6 +223,32 @@ def main():
             #print(f"{k:16s} | kNN sen: {v['knn_sensitivity']:.4f} | SVM sen: {v['svm_sensitivity']:.4f}")
             #print(f"{k:16s} | kNN spe: {v['knn_specificity']:.4f} | SVM spe: {v['svm_specificity']:.4f}")
 
+    # Multiprocessing
+    with ProcessPoolExecutor(max_workers=2) as executor:
+        process_mono = executor.submit(
+            run_mono,
+            train_paths=train_paths,
+            test_paths=test_paths,
+            train_labels=train_labels,
+            test_labels=test_labels,
+            cfg=cfg,
+            use_filtering=True,
+            use_global_scalars=False
+        )
+
+        process_eqloud = executor.submit(
+            run_eqloud,
+            train_paths=train_paths,
+            test_paths=test_paths,
+            train_labels=train_labels,
+            test_labels=test_labels,
+            cfg=cfg,
+            use_filtering=True,
+            use_global_scalars=False
+        )
+
+    res_mono = process_mono.result()
+    res_eqloud = process_eqloud.result()
 
     print_results("MonoLoader Normalization (statistical)", res_mono)
     print_results("EqLoudLoader Normalization (perceptive)", res_eqloud)

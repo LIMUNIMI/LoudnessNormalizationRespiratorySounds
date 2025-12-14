@@ -16,14 +16,12 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
     results = {}
 
     # === Label Processing ===
-    # Rimuovi campioni "Unknown"
     mask_train = y_train != "Unknown"
     X_train, y_train = X_train[mask_train], y_train[mask_train]
 
     mask_test = y_test != "Unknown"
     X_test, y_test = X_test[mask_test], y_test[mask_test]
 
-    # Codifica numerica delle classi
     le = LabelEncoder()
     y_train = le.fit_transform(y_train)
     y_test = le.transform(y_test)
@@ -57,8 +55,10 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
 def evaluate_auto(X: np.ndarray, y: np.ndarray, cfg: Config) -> dict[str, float]:
     results = {}
 
+    # === Cross Validation ===
     cv = StratifiedKFold(n_splits=cfg.kfolds, shuffle=True, random_state=cfg.random_state)
 
+    # === Automatic Classification ===
     auto_clf = AutoSklearnClassifier(
         time_limit=cfg.autosklearn_per_run,
     )
@@ -94,12 +94,12 @@ def evaluate_auto_official(X_train: np.ndarray, y_train: np.ndarray,
     cv_acc, cv_sens, cv_spec = [], [], []
     y_train = np.array(y_train)
 
+    # === Automatic Classification ===
     auto_clf = AutoSklearnClassifier(time_limit=cfg.autosklearn_time, random_state=cfg.random_state)
 
     scaler = StandardScaler()
     scaler.fit(X_train, y_train)
     y_pred = auto_clf.predict(X_test)
-
 
     results['auto_accuracy_official_split'] = auto_sklearn.score(X_test, y_test)
 

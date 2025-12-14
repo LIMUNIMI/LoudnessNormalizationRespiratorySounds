@@ -25,3 +25,11 @@ def normalize_by_median(audio: np.ndarray, eps: float = 1e-8) -> np.ndarray:
 
 def normalize_by_scalar(audio: np.ndarray, scalar: float, eps: float = 1e-8) -> np.ndarray:
     return audio / (scalar + eps)
+
+def cluster_norm(y_feat, km, intensity_train_scaled, cfg: Config):
+    y, feat = y_feat
+    cluster_id = km.predict([feat])[0]
+    cluster_members = intensity_train_scaled[km.labels_ == cluster_id]
+    cluster_scalar = float(np.mean(cluster_members))
+    y_norm = normalize_by_scalar(y, cluster_scalar)
+    return extract_features(y_norm, cfg=cfg)
