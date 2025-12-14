@@ -35,3 +35,9 @@ def extract_features(audio: np.ndarray, cfg: Config) -> np.ndarray:
     centroid = es.Centroid()(np.abs(es.Spectrum()(es.Windowing(type='hann')(audio[:min(len(audio), 2048)]))))
 
     return np.concatenate([feat_mean, feat_std, [rms, zcr, centroid]]).astype(np.float32)
+
+def rms_features(y: np.ndarray, cfg: Config) -> np.ndarray:
+    return extract_features(normalize_by_rms(y), cfg=cfg)
+
+def median_features(y: np.ndarray, cfg: Config) -> np.ndarray:
+    return extract_features(normalize_by_median(y), cfg=cfg)
