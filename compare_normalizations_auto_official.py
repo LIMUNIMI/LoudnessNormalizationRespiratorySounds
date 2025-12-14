@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Dict
+from typing import List, Dict
 from tqdm import tqdm
 
 import essentia.standard as es
@@ -29,7 +29,7 @@ def load_eqloud(path: str, sample_rate: int) -> np.ndarray:
 
   
 # ===================
-# ==== Pipelines ====
+# ==== Processes ====
 # ===================
 
 def run_mono_official(train_paths: List[str], test_paths: List[str],
@@ -192,9 +192,10 @@ def main():
     dataset_directory = "resampled_data/"
     metadata_directory = "metadata/icbhi_summary.csv"
     official_split_directory = "metadata/ICBHI_challenge_train_test.txt"
+    diagnosis_directory = "ICBHI_Challenge_diagnosis.txt"
     print("[DEBUG]: Loading dataset...\n")
     #paths, labels = load_dataset(dataset_directory, metadata_directory)
-    train_labels, test_labels = load_labels_split(dataset_directory, metadata_directory, official_split_directory)
+    train_labels, test_labels = load_labels_split_macro(dataset_directory, diagnosis_directory, official_split_directory)
     from collections import Counter
 
     # Getting official split infos
@@ -207,12 +208,12 @@ def main():
     assert len(test_paths) > 0, "ERROR: Can't find any test path."
 
     # Running Mono Pipelines
-    print("[DEBUG]: Running Mono Pipelines...\n")
+    print("[DEBUG]: Running Mono Pipelines with official split...\n")
     #res_mono = run_mono(paths, labels, cfg, use_filtering=True, use_global_scalars=False)
     res_mono = run_mono_official(train_paths=train_paths, test_paths=test_paths, train_labels=train_labels, test_labels=test_labels, cfg=cfg, use_filtering=True, use_global_scalars=False)
 
     # Running EqLoud Pipelines
-    print("[DEBUG]: Running EqLoud Pipelines...\n")
+    print("[DEBUG]: Running EqLoud Pipelines with official split...\n")
     #res_eqloud = run_eqloud(paths, labels, cfg, use_filtering=True, use_global_scalars=False)
     res_eqloud = run_eqloud_official(train_paths=train_paths, test_paths=test_paths, train_labels=train_labels, test_labels=test_labels, cfg=cfg, use_filtering=True, use_global_scalars=False)
 

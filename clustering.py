@@ -6,12 +6,11 @@ from config import Config
 from filters import *
 
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 
 # ==== Clustering ====
 def compute_cluster_features(paths: List[str], loader_fn: Callable[[str, int], np.ndarray], cfg: Config, apply_filtering: bool = False, features: list[str] = None) -> np.ndarray:
     vals = []
-    for p in tqdm(paths, desc="Intensity Features"):
+    for p in tqdm(paths, desc="Clustering Features"):
         y = loader_fn(p, cfg.sample_rate)
         if apply_filtering:
             y = apply_filters(y, cfg=cfg, use_bp=True)
