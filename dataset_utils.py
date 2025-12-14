@@ -6,8 +6,6 @@ from tqdm import tqdm
 
 import essentia.standard as es
 
-
-from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline as SKPipeline
 
 from config import *
@@ -84,7 +82,7 @@ def load_dataset_macro(audio_dir: str, diagnosis_file: str) -> Tuple[List[str], 
             patient_id = extract_patient_id(f_base)
 
             if patient_id and patient_id in diag_map:
-                if diag_map[patient_id] == "Healty":
+                if diag_map[patient_id] == "Healthy":
                     label = Healty
                 else:
                     label = "Unhealty"
@@ -183,6 +181,8 @@ def load_labels_split_macro(audio_dir: str, diagnosis_file: str, split_file: str
                 train_files.append(fname)
             elif set_type.lower() == "test":
                 test_files.append(fname)
+    #print(train_files)
+    #print(test_files)
 
     # Funzione per estrarre patient_id dai nomi file
     def extract_patient_id(file_name: str) -> str:
@@ -192,15 +192,15 @@ def load_labels_split_macro(audio_dir: str, diagnosis_file: str, split_file: str
     def get_label(f_base: str):
         patient_id = extract_patient_id(f_base)
         if patient_id and patient_id in diag_map:
-            if diag_map[patient_id] == "Healty":
+            if diag_map[patient_id] == "Healthy":
                 label = "Healty"
             else:
                 label = "Unhealty"
         else:
             return "unknown"
+        return label
 
     # Costruisci train_labels e test_labels
     train_labels = [get_label(os.path.splitext(f)[0]) for f in train_files]
     test_labels  = [get_label(os.path.splitext(f)[0]) for f in test_files]
-
     return np.array(train_labels), np.array(test_labels)

@@ -200,8 +200,9 @@ def main():
 
     dataset_directory = "resampled_data/"
     metadata_directory = "metadata/icbhi_summary.csv"
+    diagnosis_directory = "ICBHI_Challenge_diagnosis.txt"
     print("[DEBUG]: Loading dataset...\n")
-    paths, labels = load_dataset_macro(dataset_directory, metadata_directory)
+    paths, labels = load_dataset_macro(dataset_directory, diagnosis_directory)
     from collections import Counter
 
     assert len(paths) == len(labels), "ERROR: Paths and Labels not in same number."
