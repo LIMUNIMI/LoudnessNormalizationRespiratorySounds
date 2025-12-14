@@ -194,7 +194,7 @@ def main():
     official_split_directory = "metadata/ICBHI_challenge_train_test.txt"
     print("[DEBUG]: Loading dataset...\n")
     #paths, labels = load_dataset(dataset_directory, metadata_directory)
-    train_labels, test_labels = load_labels_split(dataset_directory, metadata_directory, official_split_directory)
+    train_labels, test_labels = load_labels_split_macro(dataset_directory, metadata_directory, official_split_directory)
     from collections import Counter
 
     # Getting official split infos
