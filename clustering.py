@@ -6,7 +6,6 @@ from config import Config
 from filters import *
 
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 
 # ==== Clustering ====
 def compute_cluster_features(paths: List[str], loader_fn: Callable[[str, int], np.ndarray], cfg: Config, apply_filtering: bool = False, features: list[str] = None) -> np.ndarray:

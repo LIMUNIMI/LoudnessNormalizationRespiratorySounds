@@ -1,8 +1,6 @@
 import numpy as np
 from config import Config
 
-from typing import List, Tuple, Dict, Callable
-
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline as SKPipeline
