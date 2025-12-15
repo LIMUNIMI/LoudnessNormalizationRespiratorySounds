@@ -20,129 +20,72 @@ from features import *
 from clustering import *
 from classification import *
 from dataset_utils import *
-
-# ==== Load Wrappers ====
-def load_mono(path: str, sample_rate: int) -> np.ndarray:
-    audio = es.MonoLoader(filename=path, sampleRate=sample_rate)()
-    return audio.astype(np.float32)
-
-def load_eqloud(path: str, sample_rate: int) -> np.ndarray:
-    audio = es.EqloudLoader(filename=path, sampleRate=sample_rate)()
-    return audio.astype(np.float32)
-    label_df = pd.read_csv(label_dir)
-
-    ann_map = {
-        row['file_name']: (row['n_wheeze'], row['n_crackle'])
-        for _, row in label_df.iterrows()
-    }
-
-    files = [] 
-    labels = []
-
-    for f in os.listdir(audio_dir):
-        if f.endswith(".wav"):
-            path = os.path.join(audio_dir, f)
-            files.append(path)
-
-            f_base = os.path.splitext(f)[0]
-
-            if f_base in ann_map:
-
-                n_wheeze, n_crackle = ann_map[f_base]
-
-                if int(n_wheeze) > 0 and int(n_crackle) > 0:
-                    label = 'both'
-                elif int(n_wheeze) > 0:
-                    label = 'wheeze'
-                elif int(n_crackle) > 0:
-                    label = 'crackle'
-                else:
-                    label = 'none'
-            else:
-                label = 'none'
-        
-            labels.append(label)
-        
-    return files, labels
-
-
-# === Multiprocessing Utils ===
-def preprocess_file(path: str, cfg: Config, use_filtering: bool) -> np.ndarray:
-    y = load_mono(path, cfg.sample_rate)
-    if use_filtering:
-        y = apply_filters(y, cfg=cfg, use_bp=True)
-    y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=cfg.target_duration)
-    return y
-
-def preprocess_eqloud(path: str, cfg: Config, use_filtering: bool, filtered_dir: str):
-    if use_filtering:
-        y = load_mono(path, cfg.sample_rate)
-        y = apply_filters(y, cfg=cfg, use_bp=True)
-        filtered_path = os.path.join(filtered_dir, os.path.basename(path))
-        es.MonoWriter(filename=filtered_path, sampleRate=cfg.sample_rate)(y)
-        y = load_eqloud(filtered_path, cfg.sample_rate)
-    else:
-        y = load_eqloud(path, cfg.sample_rate)
-    y = normalize_duration(y, sample_rate=cfg.sample_rate, target_length=cfg.target_duration)
-    return y
-
-# ===================
-# ==== Pipelines ====
-# ===================
+from multiprocessing import *
 
 # --- Running Mono Process ---
 def run_mono(train_paths: List[str], test_paths: List[str],
              train_labels: np.ndarray, test_labels: np.ndarray,
-             cfg: Config, use_filtering: bool = True,
+             cfg: Config,
              use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
     results = {}
 
     # === Parallel Sample Loading ===
     with ProcessPoolExecutor() as executor:
-        train_audio = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=use_filtering), train_paths))
-        test_audio  = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=use_filtering), test_paths))
+        train_audio = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=cfg.filter_toggle, use_duration_norm=cfg.duration_norm_toggle), train_paths))
+        test_audio  = list(executor.map(partial(preprocess_file, cfg=cfg, use_filtering=cfg.filter_toggle, use_duration_norm=cfg.duration_norm_toggle), test_paths))
 
-    # ---- Pipe A: Mean-based Normalization ----
-    with ProcessPoolExecutor() as executor:
-        X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
-        X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
-    results['mono_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    # ---- Pipe B: Median-based Normalization ----
-    with ProcessPoolExecutor() as executor:
-        X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
-        X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
-    results['mono_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+    if cfg.amplitude_norm_toggle:
 
-    # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity_train = compute_cluster_features(train_paths, load_mono, cfg,
-                                               apply_filtering=use_filtering,
-                                               features=cfg.cluster_features)
-    intensity_test  = compute_cluster_features(test_paths, load_mono, cfg,
-                                               apply_filtering=use_filtering,
-                                               features=cfg.cluster_features)
+        # ---- Pipe A: Mean-based Normalization ----
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
+            X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
+        results['mono_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    km = fit_kmeans(intensity_train, cfg)
-    scaler = StandardScaler()
-    intensity_train_scaled = scaler.fit_transform(intensity_train)
-    intensity_test_scaled  = scaler.transform(intensity_test)
 
-    with ProcessPoolExecutor() as executor:
-        feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
-                                        zip(train_audio, intensity_train_scaled)))
-        feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
-                                        zip(test_audio, intensity_test_scaled)))
+        # ---- Pipe B: Median-based Normalization ----
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
+            X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
+        results['mono_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    X_train = np.vstack(feats_train)
-    X_test  = np.vstack(feats_test)
-    results['mono_cluster'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+
+        # ---- Pipe C: K-Means Clustering Normalization ----
+        intensity_train = compute_cluster_features(train_paths, load_mono, cfg,
+                                                apply_filtering=cfg.filter_toggle,
+                                                features=cfg.cluster_features)
+        intensity_test  = compute_cluster_features(test_paths, load_mono, cfg,
+                                                apply_filtering=cfg.filter_toggle,
+                                                features=cfg.cluster_features)
+
+        km = fit_kmeans(intensity_train, cfg)
+        scaler = StandardScaler()
+        intensity_train_scaled = scaler.fit_transform(intensity_train)
+        intensity_test_scaled  = scaler.transform(intensity_test)
+
+        with ProcessPoolExecutor() as executor:
+            feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                            zip(train_audio, intensity_train_scaled)))
+            feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                            zip(test_audio, intensity_test_scaled)))
+
+        X_train = np.vstack(feats_train)
+        X_test  = np.vstack(feats_test)
+        results['mono_cluster'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+    else:
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(extract_features, cfg=cfg), train_audio)))
+            X_test = np.vstack(list(executor.map(partial(extract_features, cfg=cfg), test_audio)))
+        results['mono_base'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     return results
+
 
 # --- Running EqLoud Process ---
 def run_eqloud(train_paths: List[str], test_paths: List[str],
                train_labels: np.ndarray, test_labels: np.ndarray,
-               cfg: Config, use_filtering: bool = True,
+               cfg: Config,
                use_global_scalars: bool = False) -> Dict[str, Dict[str, float]]:
     results = {}
     filtered_dir = "filtered_data/"
@@ -150,43 +93,51 @@ def run_eqloud(train_paths: List[str], test_paths: List[str],
 
     # === Parallel Sample Loading ===
     with ProcessPoolExecutor() as executor:
-        train_audio = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, filtered_dir=filtered_dir), train_paths))
-        test_audio  = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, filtered_dir=filtered_dir), test_paths))
+        train_audio = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), train_paths))
+        test_audio  = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), test_paths))
 
-    # ---- Pipe A: Mean-based Normalization ----
-    with ProcessPoolExecutor() as executor:
-        X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
-        X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
-    results['eqloud_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    # ---- Pipe B: Median-based Normalization ----
-    with ProcessPoolExecutor() as executor:
-        X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
-        X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
-    results['eqloud_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+    if cfg.amplitude_norm_toggle:
 
-    # ---- Pipe C: K-Means Clustering Normalization ----
-    intensity_train = compute_cluster_features(train_paths, load_mono, cfg,
-                                               apply_filtering=use_filtering,
-                                               features=cfg.cluster_features)
-    intensity_test  = compute_cluster_features(test_paths, load_mono, cfg,
-                                               apply_filtering=use_filtering,
-                                               features=cfg.cluster_features)
+        # ---- Pipe A: Mean-based Normalization ----
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), train_audio)))
+            X_test  = np.vstack(list(executor.map(partial(rms_features, cfg=cfg), test_audio)))
+        results['eqloud_rms'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    km = fit_kmeans(intensity_train, cfg)
-    scaler = StandardScaler()
-    intensity_train_scaled = scaler.fit_transform(intensity_train)
-    intensity_test_scaled  = scaler.transform(intensity_test)
+        # ---- Pipe B: Median-based Normalization ----
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(median_features, cfg=cfg), train_audio)))
+            X_test  = np.vstack(list(executor.map(partial(median_features, cfg=cfg), test_audio)))
+        results['eqloud_median'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
-    with ProcessPoolExecutor() as executor:
-        feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
-                                        zip(train_audio, intensity_train_scaled)))
-        feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
-                                        zip(test_audio, intensity_test_scaled)))
+        # ---- Pipe C: K-Means Clustering Normalization ----
+        intensity_train = compute_cluster_features(train_paths, load_mono, cfg,
+                                                apply_filtering=cfg.filter_toggle,
+                                                features=cfg.cluster_features)
+        intensity_test  = compute_cluster_features(test_paths, load_mono, cfg,
+                                                apply_filtering=cfg.filter_toggle,
+                                                features=cfg.cluster_features)
 
-    X_train = np.vstack(feats_train)
-    X_test  = np.vstack(feats_test)
-    results['eqloud_cluster'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+        km = fit_kmeans(intensity_train, cfg)
+        scaler = StandardScaler()
+        intensity_train_scaled = scaler.fit_transform(intensity_train)
+        intensity_test_scaled  = scaler.transform(intensity_test)
+
+        with ProcessPoolExecutor() as executor:
+            feats_train = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                            zip(train_audio, intensity_train_scaled)))
+            feats_test  = list(executor.map(partial(cluster_norm, km=km, intensity_train_scaled=intensity_train_scaled, cfg=cfg),
+                                            zip(test_audio, intensity_test_scaled)))
+
+        X_train = np.vstack(feats_train)
+        X_test  = np.vstack(feats_test)
+        results['eqloud_cluster'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
+    else:
+        with ProcessPoolExecutor() as executor:
+            X_train = np.vstack(list(executor.map(partial(extract_features, cfg=cfg), train_audio)))
+            X_test = np.vstack(list(executor.map(partial(extract_features, cfg=cfg), test_audio)))
+        results['eqloud_base'] = evaluate(X_train, train_labels, X_test, test_labels, cfg)
 
     return results
 
@@ -232,7 +183,6 @@ def main():
             train_labels=train_labels,
             test_labels=test_labels,
             cfg=cfg,
-            use_filtering=True,
             use_global_scalars=False
         )
 
@@ -243,7 +193,6 @@ def main():
             train_labels=train_labels,
             test_labels=test_labels,
             cfg=cfg,
-            use_filtering=True,
             use_global_scalars=False
         )
 
