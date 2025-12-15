@@ -3,7 +3,7 @@ import numpy as np
 import essentia.standard as es
 from filters import apply_filters
 
-from Config import *
+from config import *
 from normalization_utils import normalize_duration
 
 # ==== Load Wrappers ====

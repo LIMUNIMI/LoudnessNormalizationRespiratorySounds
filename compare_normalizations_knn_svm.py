@@ -20,7 +20,7 @@ from features import *
 from clustering import *
 from classification import *
 from dataset_utils import *
-from multiprocessing import *
+from multiprocessing_utils import *
 
 # --- Running Mono Process ---
 def run_mono(train_paths: List[str], test_paths: List[str],
@@ -93,8 +93,8 @@ def run_eqloud(train_paths: List[str], test_paths: List[str],
 
     # === Parallel Sample Loading ===
     with ProcessPoolExecutor() as executor:
-        train_audio = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), train_paths))
-        test_audio  = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=use_filtering, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), test_paths))
+        train_audio = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=cfg.filter_toggle, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), train_paths))
+        test_audio  = list(executor.map(partial(preprocess_eqloud, cfg=cfg, use_filtering=cfg.filter_toggle, use_duration_norm=cfg.duration_norm_toggle, filtered_dir=filtered_dir), test_paths))
 
 
     if cfg.amplitude_norm_toggle:
