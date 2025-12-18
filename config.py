@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Callable
 
+
+
 # ==== Configuration Dataclass ====
 @dataclass
 class Config:
@@ -10,7 +12,8 @@ class Config:
     # Audio Processing Macros
     target_duration : int = 60
     bandpass_frequency : float = 1150.0
-    bandpass_band : float = 1700.0
+    bandpass_bandwidth : float = 1700.0
+    highpass_frequency : float = 300
     window_size : float = 0.025
     hop : float = 0.010
 
@@ -32,7 +35,9 @@ class Config:
 
     # Step-by-step Processing
     duration_norm_toggle: bool = False
-    filter_toggle: bool = False
+    highpass_toggle: bool = False
+    bandpass_toggle: bool = False
     amplitude_norm_toggle: bool = False
-    
+    run_method: str = "classification"
+
 
