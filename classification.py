@@ -104,4 +104,3 @@ def evaluate_auto_official(X_train: np.ndarray, y_train: np.ndarray,
     results['auto_accuracy_official_split'] = auto_sklearn.score(X_test, y_test)
 
     return results
-

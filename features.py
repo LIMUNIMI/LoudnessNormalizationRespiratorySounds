@@ -1,9 +1,20 @@
 import numpy as np
 import essentia.standard as es
 from config import Config
+from functools import partial
+from concurrent.futures import ProcessPoolExecutor
 from normalization_utils import *
 
+
 # ==== Feature Extraction ====
+def median_features(y: np.ndarray, cfg: Config) -> np.ndarray:
+    return extract_features(normalize_by_median(y), cfg=cfg)
+
+
+def rms_features(y: np.ndarray, cfg: Config) -> np.ndarray:
+    return extract_features(normalize_by_rms(y), cfg=cfg)
+
+
 def extract_features(audio: np.ndarray, cfg: Config) -> np.ndarray:
     # Framing
     n_mfcc = cfg.n_mfcc
@@ -37,12 +48,27 @@ def extract_features(audio: np.ndarray, cfg: Config) -> np.ndarray:
 
     return np.concatenate([feat_mean, feat_std, [rms, zcr, centroid]]).astype(np.float32)
 
-def rms_features(y: np.ndarray, cfg: Config) -> np.ndarray:
-    return extract_features(normalize_by_rms(y), cfg=cfg)
 
-def median_features(y: np.ndarray, cfg: Config) -> np.ndarray:
-    return extract_features(normalize_by_median(y), cfg=cfg)
+def process_file_for_features(filename: str, source_dir: str, cfg: Config) -> np.ndarray:
+    filepath = os.path.join(source_dir, filename)
+    y = es.MonoLoader(filename=filepath, sampleRate=cfg.sample_rate)()
+    return extract_features(y, cfg=cfg)
 
+
+def extract_all_features(source_dir: str, cfg: Config) -> np.ndarray:
+    # Lista dei file .wav
+    file_list = [f for f in os.listdir(source_dir) if f.endswith(".wav")]
+
+    # Worker parzializzato
+    worker = partial(process_file_for_features, source_dir=source_dir, cfg=cfg)
+
+    # Parallelizzazione
+    with ProcessPoolExecutor() as executor:
+        feats = list(executor.map(worker, file_list))
+
+    return np.array(feats)
+
+# Think it's useless
 def cluster_norm(y_feat, km, intensity_train_scaled, cfg: Config):
     y, feat = y_feat
     cluster_id = km.predict([feat])[0]
