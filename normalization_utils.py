@@ -5,8 +5,8 @@ import concurrent.futures
 
 
 # ==== Duration Normalization Utilities ====
-def normalize_duration(audio: np.ndarray, sample_rate: int, target_length: int) -> np.ndarray:
-    target_samples = target_length * sample_rate
+def normalize_duration(audio: np.ndarray, sample_rate: int, target_length: float) -> np.ndarray:
+    target_samples = int(target_length * sample_rate)
     if audio.shape[0] == target_samples:
         return audio
     elif audio.shape[0] < target_samples:
