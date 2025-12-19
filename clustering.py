@@ -30,6 +30,7 @@ def process_file_for_cluster(p: str, sample_rate: int, loader_fn: str,
     spec = es.Spectrum()(es.Windowing(type='hann')(frame))
 
     # Feature map
+    # Valuta aggiunta di LogMel per clustering
     feature_map = {
         "rms": es.RMS()(y),
         "zcr": es.ZeroCrossingRate()(y),

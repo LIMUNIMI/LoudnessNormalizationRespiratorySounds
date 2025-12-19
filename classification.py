@@ -10,6 +10,13 @@ from sklearn.metrics import accuracy_score, recall_score
 from auto_sklearn2.classifier import AutoSklearnClassifier
 
 # ==== Classification ====
+import numpy as np
+from sklearn.pipeline import Pipeline as SKPipeline
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
 def evaluate(X_train: np.ndarray, y_train: np.ndarray,
              X_test: np.ndarray, y_test: np.ndarray,
              cfg: Config) -> dict[str, float]:
@@ -26,29 +33,46 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
     y_train = le.fit_transform(y_train)
     y_test = le.transform(y_test)
 
+    # Funzione per metriche ufficiali ICBHI (2-class)
+    def icbhi_metrics(y_true, y_pred):
+        # classi: 0 = Normal, 1 = Anomalous
+        P_anom = np.sum((y_true == 1) & (y_pred == 1))
+        N_anom = np.sum(y_true == 1)
+        P_norm = np.sum((y_true == 0) & (y_pred == 0))
+        N_norm = np.sum(y_true == 0)
+
+        Se = P_anom / N_anom if N_anom > 0 else 0.0
+        Sp = P_norm / N_norm if N_norm > 0 else 0.0
+        Score = (Se + Sp) / 2
+        return Se, Sp, Score
+
     # === kNN Classifier ===
     knn_clf = SKPipeline([
         ('scaler', StandardScaler()),
-        ('knn', KNeighborsClassifier(n_neighbors=5))
+        ('knn', KNeighborsClassifier(n_neighbors=7))
     ])
     knn_clf.fit(X_train, y_train)
     y_pred_knn = knn_clf.predict(X_test)
 
-    results['knn_accuracy'] = accuracy_score(y_test, y_pred_knn)
-    results['knn_sensitivity'] = recall_score(y_test, y_pred_knn, pos_label=1, average='weighted')
-    results['knn_specificity'] = recall_score(y_test, y_pred_knn, pos_label=0, average='weighted')
+    Se_knn, Sp_knn, Score_knn = icbhi_metrics(y_test, y_pred_knn)
+    #results['knn_accuracy'] = accuracy_score(y_test, y_pred_knn)
+    results['knn_sensitivity'] = Se_knn * 100
+    results['knn_specificity'] = Sp_knn * 100
+    results['knn_score'] = Score_knn * 100
 
     # === SVM RBF Classifier ===
     svm_clf = SKPipeline([
         ('scaler', StandardScaler()),
-        ('svm', SVC(kernel='rbf', C=1.0, gamma='scale'))
+        ('svm', SVC(kernel='rbf', C=0.1, gamma='scale', class_weight='balanced'))
     ])
     svm_clf.fit(X_train, y_train)
     y_pred_svm = svm_clf.predict(X_test)
 
-    results['svm_accuracy'] = accuracy_score(y_test, y_pred_svm)
-    results['svm_sensitivity'] = recall_score(y_test, y_pred_svm, pos_label=1, average='weighted')
-    results['svm_specificity'] = recall_score(y_test, y_pred_svm, pos_label=0, average='weighted')
+    Se_svm, Sp_svm, Score_svm = icbhi_metrics(y_test, y_pred_svm)
+    #results['svm_accuracy'] = accuracy_score(y_test, y_pred_svm)
+    results['svm_sensitivity'] = Se_svm * 100
+    results['svm_specificity'] = Sp_svm * 100
+    results['svm_score'] = Score_svm * 100
 
     return results
 
