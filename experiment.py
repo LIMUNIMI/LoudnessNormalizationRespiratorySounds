@@ -36,6 +36,7 @@ def main(cfg: Config):
     segmentation_directory = f'{dataset_directory}segments/'
     duration_norm_directory = "duration_norm_data/"
     filtering_directory = "filtered_data/"
+    filtering_sec_order_directory = "filtered_sec_order_data/"
     amplitude_norm_directory = "amplitude_norm_data/"
     metadata_directory = "metadata/"
     seg_data_directory = "seg_data/"
@@ -64,17 +65,35 @@ def main(cfg: Config):
 
 
     # === Filtering ===
-    if cfg.highpass_toggle or cfg.bandpass_toggle:
+    if cfg.highpass_toggle or cfg.bandpass_toggle or cfg.lowpass_toggle:
+
         lg.info("Starting filtering...")
         parallel_filter_all_files(
             source_dir=duration_norm_directory,
+            output_dir=filtering_sec_order_directory,
+            sample_rate=cfg.sample_rate,
+            use_hp=cfg.highpass_toggle,
+            hp_cutoff=cfg.highpass_frequency,
+            use_bp=cfg.bandpass_toggle,
+            bp_cutoff=cfg.bandpass_frequency,
+            bp_bandwidth=cfg.bandpass_bandwidth,
+            use_lp=cfg.lowpass_toggle,
+            lp_cutoff=cfg.lowpass_frequency
+        )
+
+        lg.info("Starting filtering...")
+        parallel_filter_all_files(
+            source_dir=filtering_sec_order_directory,
             output_dir=filtering_directory,
             sample_rate=cfg.sample_rate,
             use_hp=cfg.highpass_toggle,
             hp_cutoff=cfg.highpass_frequency,
             use_bp=cfg.bandpass_toggle,
             bp_cutoff=cfg.bandpass_frequency,
-            bp_bandwidth=cfg.bandpass_bandwidth)
+            bp_bandwidth=cfg.bandpass_bandwidth,
+            use_lp=cfg.lowpass_toggle,
+            lp_cutoff=cfg.lowpass_frequency
+        )
     else:
         lg.info("Skipping filtering...")
         filtering_directory = duration_norm_directory
@@ -354,26 +373,37 @@ def main_eval_only():
 
 
 if __name__ == "__main__":
-    cfg_05 = Config(window_size=0.5, result_filename="experiment_results_ws05.csv")
-    cfg_06 = Config(window_size=0.6, result_filename="experiment_results_ws06.csv")
-    cfg_075 = Config(window_size=0.75, result_filename="experiment_results_ws075.csv")
-    cfg_08 = Config(window_size=0.8, result_filename="experiment_results_ws08.csv")
-    cfg_1 = Config(window_size=1.0, result_filename="experiment_results_ws1.csv")
-    cfg_125 = Config(window_size=1.25, result_filename="experiment_results_ws125.csv")
-    cfg_15 = Config(window_size=1.5, result_filename="experiment_results_ws15.csv")
-    cfg_2 = Config(window_size=2.0, result_filename="experiment_results_ws2.csv")
-    cfg_4 = Config(window_size=4.0, result_filename="experiment_results_ws4.csv")
+    # === Experimenting with Window Sizes ===
+    ws_05 = Config(window_size=0.5, result_filename="experiment_results_ws05.csv")
+    ws_06 = Config(window_size=0.6, result_filename="experiment_results_ws06.csv")
+    ws_08 = Config(window_size=0.8, result_filename="experiment_results_ws08.csv")
+    ws_1 = Config(window_size=1.0, result_filename="experiment_results_ws1.csv")
+    ws_15 = Config(window_size=1.5, result_filename="experiment_results_ws15.csv")
+    ws_2 = Config(window_size=2.0, result_filename="experiment_results_ws2.csv")
+    ws_4 = Config(window_size=4.0, result_filename="experiment_results_ws4.csv")
 
+    # === Experimenting with Duration Normalization ===
+    # 1.5 2 2.5 3 3.5
+    dt_15 = Config(target_duration=1.5, result_filename="experiment_results_dt1_5.csv")
+    dt_2 = Config(target_duration=2.0, result_filename="experiment_results_dt2.csv")
+    dt_25 = Config(target_duration=2.5, result_filename="experiment_results_dt2_5.csv")
+    dt_3 = Config(target_duration=3.0, result_filename="experiment_results_dt3.csv")
+    dt_35 = Config(target_duration=3.5, result_filename="experiment_results_dt3_5.csv")
+
+
+    # === Experimenting with Filtering Frequencies ===
+    # bp70/2000, hp60, lp1800, bp70/2000+hp60, lp1800+hp60
+    bp_70_2000 = Config(bandpass_toggle=True, bandpass_frequency=965.0, bandpass_bandwidth=1930.0, result_filename="experiment_results_bp70_2000.csv")
+    hp_60 = Config(highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_hp60.csv")
+    lp_1800 = Config(lowpass_toggle=True, lowpass_frequency=1800.0, result_filename="experiment_results_lp1800.csv")
+    bp_70_2000_hp_60 = Config(bandpass_toggle=True, bandpass_frequency=965.0, bandpass_bandwidth=1930.0, highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_bp70_2000_hp60.csv")
+    lp_1800_hp_60 = Config(lowpass_toggle=True, lowpass_frequency=1800.0, highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_lp1800_hp60.csv")
+
+
+    # === Experimenting with Amplitude Normalization ===
+    # rms mono, median mono, cluster mono, rms eqloud, median eqloud, cluster eqloud
 
     if cfg.run_method == "all":
-        main(cfg=cfg_05)
-        main(cfg=cfg_06)
-        main(cfg=cfg_075)
-        main(cfg=cfg_08)
-        main(cfg=cfg_1)
-        main(cfg=cfg_125)
-        main(cfg=cfg_15)
-        main(cfg=cfg_2)
-        main(cfg=cfg_4)
+        main()
     elif cfg.run_method == "classification":
         main_eval_only()

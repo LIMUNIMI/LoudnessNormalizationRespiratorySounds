@@ -10,11 +10,12 @@ class Config:
     sample_rate : int = 44100
 
     # Audio Processing Macros
-    target_duration : float = 60.0
-    bandpass_frequency : float = 1150.0
-    bandpass_bandwidth : float = 1700.0
+    target_duration : float = 2.0
+    bandpass_frequency : float = 965.0
+    bandpass_bandwidth : float = 1930.0
     highpass_frequency : float = 300
-    window_size : float = 0.5
+    lowpass_frequency : float = 1800.0
+    window_size : float = 0.8
     hop : float = 0.010
 
     # Feature Extraction Macros
@@ -37,7 +38,8 @@ class Config:
     # Step-by-step Processing
     duration_norm_toggle: bool = True
     highpass_toggle: bool = False
-    bandpass_toggle: bool = False
+    bandpass_toggle: bool = True
+    lowpass_toggle: bool = False
     #wavelet_denoise_toggle: bool = False
     amplitude_norm_toggle: bool = False
     run_method: str = "all"  # Options: all, classification
