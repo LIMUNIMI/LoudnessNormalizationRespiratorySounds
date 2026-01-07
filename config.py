@@ -15,7 +15,7 @@ class Config:
     bandpass_bandwidth : float = 1930.0
     highpass_frequency : float = 300
     lowpass_frequency : float = 1800.0
-    window_size : float = 0.8
+    window_size : float = 0.5 # This to 0.5
     hop : float = 0.010
 
     # Feature Extraction Macros
@@ -24,7 +24,7 @@ class Config:
     n_mel : int = 64
 
     # Clustering Macros
-    n_clusters : int = 5
+    n_clusters : int = 3 # This to 3
     cluster_features: list[str] = field(
         default_factory=lambda: ["rms", "zcr", "centroid", "flux", "rolloff", "flatness"]
     )
@@ -36,13 +36,14 @@ class Config:
     autosklearn_memory : int = 4096
 
     # Step-by-step Processing
-    duration_norm_toggle: bool = True
+    duration_norm_toggle: bool = True # This to True
     highpass_toggle: bool = False
-    bandpass_toggle: bool = True
+    bandpass_toggle: bool = True# This to True
     lowpass_toggle: bool = False
+    fourth_filter_toggle: bool = True #This to True
     #wavelet_denoise_toggle: bool = False
-    amplitude_norm_toggle: bool = False
+    amplitude_norm_toggle: bool = True # This to True
     run_method: str = "all"  # Options: all, classification
-    result_filename: str = "experiment_results.csv"
+    result_filename: str = "noise_stress_10.csv"
 
 

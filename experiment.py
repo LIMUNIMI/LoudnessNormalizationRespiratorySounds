@@ -26,12 +26,13 @@ cfg = Config()
 
 def main(cfg: Config):
 
-
+    lg.info("===================================")
     lg.info("\n\n")
+    lg.info("Running Experiment: " + cfg.result_filename)
     lg.info("===================================")
     lg.info("Configuring experiment...")
 
-
+    #dataset_directory = "noise_data/"
     dataset_directory = "resampled_data/"
     segmentation_directory = f'{dataset_directory}segments/'
     duration_norm_directory = "duration_norm_data/"
@@ -66,34 +67,49 @@ def main(cfg: Config):
 
     # === Filtering ===
     if cfg.highpass_toggle or cfg.bandpass_toggle or cfg.lowpass_toggle:
+        if cfg.fourth_filter_toggle:
+            lg.info("Starting 4th order filtering...")
+            parallel_filter_all_files(
+                source_dir=duration_norm_directory,
+                output_dir=filtering_sec_order_directory,
+                sample_rate=cfg.sample_rate,
+                use_hp=cfg.highpass_toggle,
+                hp_cutoff=cfg.highpass_frequency,
+                use_bp=cfg.bandpass_toggle,
+                bp_cutoff=cfg.bandpass_frequency,
+                bp_bandwidth=cfg.bandpass_bandwidth,
+                use_lp=cfg.lowpass_toggle,
+                lp_cutoff=cfg.lowpass_frequency
+            )
 
-        lg.info("Starting filtering...")
-        parallel_filter_all_files(
-            source_dir=duration_norm_directory,
-            output_dir=filtering_sec_order_directory,
-            sample_rate=cfg.sample_rate,
-            use_hp=cfg.highpass_toggle,
-            hp_cutoff=cfg.highpass_frequency,
-            use_bp=cfg.bandpass_toggle,
-            bp_cutoff=cfg.bandpass_frequency,
-            bp_bandwidth=cfg.bandpass_bandwidth,
-            use_lp=cfg.lowpass_toggle,
-            lp_cutoff=cfg.lowpass_frequency
-        )
+            
+            parallel_filter_all_files(
+                source_dir=filtering_sec_order_directory,
+                output_dir=filtering_directory,
+                sample_rate=cfg.sample_rate,
+                use_hp=cfg.highpass_toggle,
+                hp_cutoff=cfg.highpass_frequency,
+                use_bp=cfg.bandpass_toggle,
+                bp_cutoff=cfg.bandpass_frequency,
+                bp_bandwidth=cfg.bandpass_bandwidth,
+                use_lp=cfg.lowpass_toggle,
+                lp_cutoff=cfg.lowpass_frequency
+            )
+        else:
+            lg.info("Starting 2nd order filtering...")
+            parallel_filter_all_files(
+                source_dir=duration_norm_directory,
+                output_dir=filtering_directory,
+                sample_rate=cfg.sample_rate,
+                use_hp=cfg.highpass_toggle,
+                hp_cutoff=cfg.highpass_frequency,
+                use_bp=cfg.bandpass_toggle,
+                bp_cutoff=cfg.bandpass_frequency,
+                bp_bandwidth=cfg.bandpass_bandwidth,
+                use_lp=cfg.lowpass_toggle,
+                lp_cutoff=cfg.lowpass_frequency
+            )
 
-        lg.info("Starting filtering...")
-        parallel_filter_all_files(
-            source_dir=filtering_sec_order_directory,
-            output_dir=filtering_directory,
-            sample_rate=cfg.sample_rate,
-            use_hp=cfg.highpass_toggle,
-            hp_cutoff=cfg.highpass_frequency,
-            use_bp=cfg.bandpass_toggle,
-            bp_cutoff=cfg.bandpass_frequency,
-            bp_bandwidth=cfg.bandpass_bandwidth,
-            use_lp=cfg.lowpass_toggle,
-            lp_cutoff=cfg.lowpass_frequency
-        )
     else:
         lg.info("Skipping filtering...")
         filtering_directory = duration_norm_directory
@@ -102,9 +118,7 @@ def main(cfg: Config):
     # === Amplitude Normalization ===
     if cfg.amplitude_norm_toggle:
         lg.info("Starting amplitude normalization...")
-        # === Mono Loading ===
         lg.info("Loading mono files...")
-
 
         rms_mono_dir = f'{amplitude_norm_directory}mono/rms/'
         parallel_normalize_all_files(
@@ -152,10 +166,7 @@ def main(cfg: Config):
             loader='mono'
         )
 
-
-        # === EqLoud Loading ===
         lg.info("Loading EqLoud files...")
-
 
         rms_eqloud_dir = f'{amplitude_norm_directory}eqloud/rms/'
         parallel_normalize_all_files(
@@ -373,37 +384,7 @@ def main_eval_only():
 
 
 if __name__ == "__main__":
-    # === Experimenting with Window Sizes ===
-    ws_05 = Config(window_size=0.5, result_filename="experiment_results_ws05.csv")
-    ws_06 = Config(window_size=0.6, result_filename="experiment_results_ws06.csv")
-    ws_08 = Config(window_size=0.8, result_filename="experiment_results_ws08.csv")
-    ws_1 = Config(window_size=1.0, result_filename="experiment_results_ws1.csv")
-    ws_15 = Config(window_size=1.5, result_filename="experiment_results_ws15.csv")
-    ws_2 = Config(window_size=2.0, result_filename="experiment_results_ws2.csv")
-    ws_4 = Config(window_size=4.0, result_filename="experiment_results_ws4.csv")
-
-    # === Experimenting with Duration Normalization ===
-    # 1.5 2 2.5 3 3.5
-    dt_15 = Config(target_duration=1.5, result_filename="experiment_results_dt1_5.csv")
-    dt_2 = Config(target_duration=2.0, result_filename="experiment_results_dt2.csv")
-    dt_25 = Config(target_duration=2.5, result_filename="experiment_results_dt2_5.csv")
-    dt_3 = Config(target_duration=3.0, result_filename="experiment_results_dt3.csv")
-    dt_35 = Config(target_duration=3.5, result_filename="experiment_results_dt3_5.csv")
-
-
-    # === Experimenting with Filtering Frequencies ===
-    # bp70/2000, hp60, lp1800, bp70/2000+hp60, lp1800+hp60
-    bp_70_2000 = Config(bandpass_toggle=True, bandpass_frequency=965.0, bandpass_bandwidth=1930.0, result_filename="experiment_results_bp70_2000.csv")
-    hp_60 = Config(highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_hp60.csv")
-    lp_1800 = Config(lowpass_toggle=True, lowpass_frequency=1800.0, result_filename="experiment_results_lp1800.csv")
-    bp_70_2000_hp_60 = Config(bandpass_toggle=True, bandpass_frequency=965.0, bandpass_bandwidth=1930.0, highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_bp70_2000_hp60.csv")
-    lp_1800_hp_60 = Config(lowpass_toggle=True, lowpass_frequency=1800.0, highpass_toggle=True, highpass_frequency=60.0, result_filename="experiment_results_lp1800_hp60.csv")
-
-
-    # === Experimenting with Amplitude Normalization ===
-    # rms mono, median mono, cluster mono, rms eqloud, median eqloud, cluster eqloud
-
     if cfg.run_method == "all":
-        main()
+        main(cfg=cfg)
     elif cfg.run_method == "classification":
         main_eval_only()
