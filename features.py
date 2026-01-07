@@ -6,6 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 from normalization_utils import *
 
 
+
 # ==== Feature Extraction ====
 def median_features(y: np.ndarray, cfg: Config) -> np.ndarray:
     return extract_features(normalize_by_median(y), cfg=cfg)
@@ -16,13 +17,11 @@ def rms_features(y: np.ndarray, cfg: Config) -> np.ndarray:
 
 
 def extract_features(audio: np.ndarray, cfg) -> np.ndarray:
-    # Parametri
     n_mfcc = cfg.n_mfcc
     sample_rate = cfg.sample_rate
     wsize = int(cfg.window_size * sample_rate)
     hop = int(cfg.hop * sample_rate)
 
-    # Moduli Essentia
     window = es.Windowing(type='hann', size=wsize)
     spectrum = es.Spectrum()
     mfcc = es.MFCC(numberCoefficients=n_mfcc)
@@ -35,7 +34,7 @@ def extract_features(audio: np.ndarray, cfg) -> np.ndarray:
         log=True
     )
 
-    # Iterazione sui frame
+    # Spectral Features
     frames = es.FrameGenerator(audio, frameSize=wsize, hopSize=hop, startFromZero=True)
     mfccs, logmels = [], []
     for frame in frames:
@@ -45,14 +44,12 @@ def extract_features(audio: np.ndarray, cfg) -> np.ndarray:
         mel = melbands(spec)
         logmels.append(mel)
 
-    # Aggregazione MFCC
     mfccs = np.array(mfccs)
     if mfccs.size == 0:
         mfccs = np.zeros((1, n_mfcc), dtype=np.float32)
     feat_mean = np.mean(mfccs, axis=0)
     feat_std = np.std(mfccs, axis=0)
 
-    # Aggregazione Log-Mel
     logmels = np.array(logmels)
     if logmels.size == 0:
         logmels = np.zeros((1, cfg.n_mel), dtype=np.float32)
@@ -64,7 +61,6 @@ def extract_features(audio: np.ndarray, cfg) -> np.ndarray:
     zcr = es.ZeroCrossingRate()(audio)
     centroid = es.Centroid()(np.abs(es.Spectrum()(es.Windowing(type='hann')(audio[:min(len(audio), 2048)]))))
 
-    # Concatenazione finale
     return np.concatenate([
         feat_mean, feat_std,
         logmel_mean, logmel_std,
@@ -79,17 +75,15 @@ def process_file_for_features(filename: str, source_dir: str, cfg: Config) -> np
 
 
 def extract_all_features(source_dir: str, cfg: Config) -> np.ndarray:
-    # Lista dei file .wav
     file_list = [f for f in os.listdir(source_dir) if f.endswith(".wav")]
 
-    # Worker parzializzato
     worker = partial(process_file_for_features, source_dir=source_dir, cfg=cfg)
 
-    # Parallelizzazione
     with ProcessPoolExecutor() as executor:
         feats = list(executor.map(worker, file_list))
 
     return np.array(feats)
+
 
 # Think it's useless
 def cluster_norm(y_feat, km, intensity_train_scaled, cfg: Config):

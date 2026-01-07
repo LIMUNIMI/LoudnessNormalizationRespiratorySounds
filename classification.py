@@ -17,6 +17,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
+
+
 def evaluate(X_train: np.ndarray, y_train: np.ndarray,
              X_test: np.ndarray, y_test: np.ndarray,
              cfg: Config) -> dict[str, float]:
@@ -33,7 +35,7 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
     y_train = le.fit_transform(y_train)
     y_test = le.transform(y_test)
 
-    # Funzione per metriche ufficiali ICBHI (2-class)
+
     def icbhi_metrics(y_true, y_pred):
         # classi: 0 = Normal, 1 = Anomalous
         P_anom = np.sum((y_true == 1) & (y_pred == 1))
@@ -45,6 +47,7 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
         Sp = P_norm / N_norm if N_norm > 0 else 0.0
         Score = (Se + Sp) / 2
         return Se, Sp, Score
+
 
     # === kNN Classifier ===
     knn_clf = SKPipeline([

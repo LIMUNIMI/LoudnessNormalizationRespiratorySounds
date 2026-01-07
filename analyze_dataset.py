@@ -5,13 +5,14 @@ import librosa.display
 import matplotlib.pyplot as plt
 from scipy.signal import welch
 
+
+
 def load_audio(path, sr=16000):
-    """Carica un file audio e lo converte in mono."""
     y, sr = librosa.load(path, sr=sr, mono=True)
     return y, sr
 
+
 def compute_basic_stats(y, sr):
-    """Statistiche di base del segnale."""
     duration = len(y) / sr
     rms = np.sqrt(np.mean(y**2))
     zcr = np.mean(librosa.feature.zero_crossing_rate(y))
@@ -21,16 +22,17 @@ def compute_basic_stats(y, sr):
         "zcr": zcr
     }
 
+
 def compute_spectrum(y, sr, n_fft=2048):
-    """Calcola spettro di potenza tramite Welch."""
     freqs, psd = welch(y, sr, nperseg=n_fft)
     return freqs, psd
 
+
 def compute_spectrogram(y, sr, n_fft=1024, hop=256):
-    """Calcola spettrogramma STFT."""
     S = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop))
     S_db = librosa.amplitude_to_db(S, ref=np.max)
     return S_db
+
 
 def plot_spectrogram(S_db, sr, hop, title="Spectrogram", save_path=None, show=True):
     plt.figure(figsize=(14, 6))
@@ -40,7 +42,6 @@ def plot_spectrogram(S_db, sr, hop, title="Spectrogram", save_path=None, show=Tr
     plt.title(title)
     plt.tight_layout()
 
-    # Salvataggio immagine
     if save_path is not None:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Plot saved: {save_path}")
@@ -91,7 +92,7 @@ def main():
     print("Analisi del dataset ICBHI 2017...")
     dataset_stats, file_stats = analyze_dataset(dataset_dir)
 
-    print("\n=== STATISTICHE GLOBALI ===")
+    print("\n=== GLOBAL STATS ===")
     for k, v in dataset_stats.items():
         print(f"{k}: {v}")
 
