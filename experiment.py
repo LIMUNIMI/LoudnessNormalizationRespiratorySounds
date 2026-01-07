@@ -324,8 +324,9 @@ def main(cfg: Config):
 
 def main_eval_only():
 
-
+    lg.info("===================================")
     lg.info("\n\n")
+    lg.info("Running Experiment: " + cfg.result_filename)
     lg.info("===================================")
     lg.info("Configuring experiment...")
 
