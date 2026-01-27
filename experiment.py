@@ -67,6 +67,7 @@ def main(cfg: Config):
 
     # === Filtering ===
     if cfg.highpass_toggle or cfg.bandpass_toggle or cfg.lowpass_toggle:
+        lg.info("[FILTER SETTINGS]: hp: " + str(cfg.highpass_toggle) + ", bp: " + str(cfg.bandpass_toggle) + ", lp: " + str(cfg.lowpass_toggle))
         if cfg.fourth_filter_toggle:
             lg.info("Starting 4th order filtering...")
             parallel_filter_all_files(
@@ -285,27 +286,32 @@ def main(cfg: Config):
         rms_mono_train = extract_all_features(source_dir=f'{rms_mono_dir}train/', cfg=cfg)
         rms_mono_test = extract_all_features(source_dir=f'{rms_mono_dir}test/', cfg=cfg)
         results['rms_mono'] = evaluate(rms_mono_train, read_labels(f'{rms_mono_dir}train/labels.csv'), rms_mono_test, read_labels(f'{rms_mono_dir}test/labels.csv'), cfg)
-
+        lg.info('RMS (mono) - OK')
 
         median_mono_train = extract_all_features(source_dir=f'{median_mono_dir}train/', cfg=cfg)
         median_mono_test = extract_all_features(source_dir=f'{median_mono_dir}test/', cfg=cfg)
         results['median_mono'] = evaluate(median_mono_train, read_labels(f'{median_mono_dir}train/labels.csv'), median_mono_test, read_labels(f'{median_mono_dir}test/labels.csv'), cfg)
+        lg.info('MEDIAN (mono) - OK')
 
         cluster_mono_train = extract_all_features(source_dir=f'{cluster_mono_dir}train/', cfg=cfg)
         cluster_mono_test = extract_all_features(source_dir=f'{cluster_mono_dir}test/', cfg=cfg)
         results['cluster_mono'] = evaluate(cluster_mono_train, read_labels(f'{cluster_mono_dir}train/labels.csv'), cluster_mono_test, read_labels(f'{cluster_mono_dir}test/labels.csv'), cfg)
+        lg.info('CLUSTER (mono) - OK')
 
         rms_eqloud_train = extract_all_features(source_dir=f'{rms_eqloud_dir}train/', cfg=cfg)
         rms_eqloud_test = extract_all_features(source_dir=f'{rms_eqloud_dir}test/', cfg=cfg)
         results['rms_eqloud'] = evaluate(rms_eqloud_train, read_labels(f'{rms_eqloud_dir}train/labels.csv'), rms_eqloud_test, read_labels(f'{rms_eqloud_dir}test/labels.csv'), cfg)
+        lg.info('RMS (eqloud) - OK')
 
         median_eqloud_train = extract_all_features(source_dir=f'{median_eqloud_dir}train/', cfg=cfg)
         median_eqloud_test = extract_all_features(source_dir=f'{median_eqloud_dir}test/', cfg=cfg)
         results['median_eqloud'] = evaluate(median_eqloud_train, read_labels(f'{median_eqloud_dir}train/labels.csv'), median_eqloud_test, read_labels(f'{median_eqloud_dir}test/labels.csv'), cfg)
+        lg.info('MEDIAN (eqloud) - OK')
 
         cluster_eqloud_train = extract_all_features(source_dir=f'{cluster_eqloud_dir}train/', cfg=cfg)
         cluster_eqloud_test = extract_all_features(source_dir=f'{cluster_eqloud_dir}test/', cfg=cfg)
         results['cluster_eqloud'] = evaluate(cluster_eqloud_train, read_labels(f'{cluster_eqloud_dir}train/labels.csv'), cluster_eqloud_test, read_labels(f'{cluster_eqloud_dir}test/labels.csv'), cfg)
+        lg.info('CLUSTER (eqloud) - OK')
     else:
         all_train = extract_all_features(source_dir=f'{amplitude_norm_directory}train/', cfg=cfg)
         all_test = extract_all_features(source_dir=f'{amplitude_norm_directory}test/', cfg=cfg)
@@ -353,28 +359,32 @@ def main_eval_only():
     rms_mono_train = extract_all_features(source_dir=f'{rms_mono_dir}train/', cfg=cfg)
     rms_mono_test = extract_all_features(source_dir=f'{rms_mono_dir}test/', cfg=cfg)
     results['rms_mono'] = evaluate(rms_mono_train, read_labels(f'{rms_mono_dir}train/labels.csv'), rms_mono_test, read_labels(f'{rms_mono_dir}test/labels.csv',), cfg)
-
-
+    lg.info("RMS (mono) - OK")
+    
     median_mono_train = extract_all_features(source_dir=f'{median_mono_dir}train/', cfg=cfg)
     median_mono_test = extract_all_features(source_dir=f'{median_mono_dir}test/', cfg=cfg)
     results['median_mono'] = evaluate(median_mono_train, read_labels(f'{median_mono_dir}train/labels.csv'), median_mono_test, read_labels(f'{median_mono_dir}test/labels.csv'), cfg)
-
+    lg.info("MEDIAN (mono) - OK")
+    
     cluster_mono_train = extract_all_features(source_dir=f'{cluster_mono_dir}train/', cfg=cfg)
     cluster_mono_test = extract_all_features(source_dir=f'{cluster_mono_dir}test/', cfg=cfg)
     results['cluster_mono'] = evaluate(cluster_mono_train, read_labels(f'{cluster_mono_dir}train/labels.csv'), cluster_mono_test, read_labels(f'{cluster_mono_dir}test/labels.csv'), cfg)
-
+    lg.info("CLUSTER (mono) - OK")
+    
     rms_eqloud_train = extract_all_features(source_dir=f'{rms_eqloud_dir}train/', cfg=cfg)
     rms_eqloud_test = extract_all_features(source_dir=f'{rms_eqloud_dir}test/', cfg=cfg)
     results['rms_eqloud'] = evaluate(rms_eqloud_train, read_labels(f'{rms_eqloud_dir}train/labels.csv'), rms_eqloud_test, read_labels(f'{rms_eqloud_dir}test/labels.csv'), cfg)
-
+    lg.info("RMS (eqloud) - OK")
+    
     median_eqloud_train = extract_all_features(source_dir=f'{median_eqloud_dir}train/', cfg=cfg)
     median_eqloud_test = extract_all_features(source_dir=f'{median_eqloud_dir}test/', cfg=cfg)
     results['median_eqloud'] = evaluate(median_eqloud_train, read_labels(f'{median_eqloud_dir}train/labels.csv'), median_eqloud_test, read_labels(f'{median_eqloud_dir}test/labels.csv'), cfg)
-
+    lg.info("MEDIAN (mono) - OK")
+    
     cluster_eqloud_train = extract_all_features(source_dir=f'{cluster_eqloud_dir}train/', cfg=cfg)
     cluster_eqloud_test = extract_all_features(source_dir=f'{cluster_eqloud_dir}test/', cfg=cfg)
     results['cluster_eqloud'] = evaluate(cluster_eqloud_train, read_labels(f'{cluster_eqloud_dir}train/labels.csv'), cluster_eqloud_test, read_labels(f'{cluster_eqloud_dir}test/labels.csv'), cfg)
-
+    lg.info("CLUSTER (eqloud) - OK")
 
     # === Results Logging ===
     lg.info("Experiment Results:")
@@ -386,6 +396,22 @@ def main_eval_only():
 
 if __name__ == "__main__":
     if cfg.run_method == "all":
-        main(cfg=cfg)
+        raw = Config(
+            duration_norm_toggle=False,
+            bandpass_toggle=False,
+            fourth_filter_toggle=False,
+            amplitude_norm_toggle=False,
+            result_filename='raw_classification.csv'
+        )
+
+        full = Config(
+            duration_norm_toggle=True,
+            bandpass_toggle=True,
+            fourth_filter_toggle=True,
+            amplitude_norm_toggle=True,
+            result_filename='full_classification.csv'
+        )
+
+        main(cfg=full)
     elif cfg.run_method == "classification":
         main_eval_only()

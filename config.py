@@ -30,6 +30,9 @@ class Config:
     )
     random_state : int = 42
 
+    # Classification
+    tree_depth: int = 6 # This to 6
+
     # Automatic Classification
     autosklearn_time : int = 10
     autosklearn_per_run : int = 10
@@ -44,6 +47,6 @@ class Config:
     #wavelet_denoise_toggle: bool = False
     amplitude_norm_toggle: bool = True # This to True
     run_method: str = "all"  # Options: all, classification
-    result_filename: str = "noise_stress_10.csv"
+    result_filename: str = "baseline_test.csv"
 
 
