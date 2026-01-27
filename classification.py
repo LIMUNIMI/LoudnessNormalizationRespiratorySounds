@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.pipeline import Pipeline as SKPipeline
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, recall_score
 from auto_sklearn2.classifier import AutoSklearnClassifier
 
@@ -73,9 +74,36 @@ def evaluate(X_train: np.ndarray, y_train: np.ndarray,
 
     Se_svm, Sp_svm, Score_svm = icbhi_metrics(y_test, y_pred_svm)
     #results['svm_accuracy'] = accuracy_score(y_test, y_pred_svm)
-    results['svm_sensitivity'] = Se_svm * 100
-    results['svm_specificity'] = Sp_svm * 100
-    results['svm_score'] = Score_svm * 100
+    results['svm_sensitivity (rbf)'] = Se_svm * 100
+    results['svm_specificity (rbf)'] = Sp_svm * 100
+    results['svm_score (rbf)'] = Score_svm * 100
+
+
+    # === SVM (linear) Classifier ===
+    svm_lin_clf = SKPipeline([
+         ('scaler', StandardScaler()),
+         ('svm_lin', SVC(kernel='linear', C=0.1, gamma='scale', class_weight='balanced'))
+    ])
+    svm_lin_clf.fit(X_train, y_train)
+    y_pred_svm_lin = svm_lin_clf.predict(X_test)
+
+    Se_lin, Sp_lin, Score_lin = icbhi_metrics(y_test, y_pred_svm_lin)
+    results['svm_sensitivity (linear)'] = Se_lin * 100
+    results['svm_specificity (linear)'] = Sp_lin * 100
+    results['svm_score (linear)'] = Score_lin * 100
+
+
+    # === Decision Tree Classifier ===
+    dt_clf = SKPipeline([
+         ('dt', DecisionTreeClassifier(max_depth=cfg.tree_depth))
+    ])
+    dt_clf.fit(X_train, y_train)
+    y_pred_dt = dt_clf.predict(X_test)
+
+    Se_dt, Sp_dt, Score_dt = icbhi_metrics(y_test, y_pred_dt)
+    results['dt_sensitivity'] = Se_dt * 100
+    results['dt_specificity'] = Sp_dt * 100
+    results['dt_score'] = Score_dt * 100
 
     return results
 
