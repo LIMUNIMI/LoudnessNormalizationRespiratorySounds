@@ -121,23 +121,23 @@ def main(cfg: Config):
         lg.info("Starting amplitude normalization...")
         lg.info("Loading mono files...")
 
-        rms_mono_dir = f'{amplitude_norm_directory}mono/rms/'
-        parallel_normalize_all_files(
-            source_dir=filtering_directory,
-            output_dir=rms_mono_dir,
-            sample_rate=cfg.sample_rate,
-            method='rms',
-            loader='mono'
-        )
-
-        median_mono_dir = f'{amplitude_norm_directory}mono/median/'
-        parallel_normalize_all_files(
-            source_dir=filtering_directory,
-            output_dir=median_mono_dir,
-            sample_rate=cfg.sample_rate,
-            method='median',
-            loader='mono'
-        )
+        #rms_mono_dir = f'{amplitude_norm_directory}mono/rms/'
+        #parallel_normalize_all_files(
+        #    source_dir=filtering_directory,
+        #    output_dir=rms_mono_dir,
+        #    sample_rate=cfg.sample_rate,
+        #    method='rms',
+        #    loader='mono'
+        #)
+#
+        #median_mono_dir = f'{amplitude_norm_directory}mono/median/'
+        #parallel_normalize_all_files(
+        #    source_dir=filtering_directory,
+        #    output_dir=median_mono_dir,
+        #    sample_rate=cfg.sample_rate,
+        #    method='median',
+        #    loader='mono'
+        #)
 
         cluster_mono_dir = f'{amplitude_norm_directory}mono/cluster/'
         clustering_features_mono = compute_cluster_features(
@@ -169,23 +169,23 @@ def main(cfg: Config):
 
         lg.info("Loading EqLoud files...")
 
-        rms_eqloud_dir = f'{amplitude_norm_directory}eqloud/rms/'
-        parallel_normalize_all_files(
-            source_dir=filtering_directory,
-            output_dir=rms_eqloud_dir,
-            sample_rate=cfg.sample_rate,
-            method='rms',
-            loader='eqloud'
-        )
-
-        median_eqloud_dir = f'{amplitude_norm_directory}eqloud/median/'
-        parallel_normalize_all_files(
-            source_dir=filtering_directory,
-            output_dir=median_eqloud_dir,
-            sample_rate=cfg.sample_rate,
-            method='median',
-            loader='eqloud'
-        )
+        #rms_eqloud_dir = f'{amplitude_norm_directory}eqloud/rms/'
+        #parallel_normalize_all_files(
+        #    source_dir=filtering_directory,
+        #    output_dir=rms_eqloud_dir,
+        #    sample_rate=cfg.sample_rate,
+        #    method='rms',
+        #    loader='eqloud'
+        #)
+#
+        #median_eqloud_dir = f'{amplitude_norm_directory}eqloud/median/'
+        #parallel_normalize_all_files(
+        #    source_dir=filtering_directory,
+        #    output_dir=median_eqloud_dir,
+        #    sample_rate=cfg.sample_rate,
+        #    method='median',
+        #    loader='eqloud'
+        #)
 
         cluster_eqloud_dir = f'{amplitude_norm_directory}eqloud/cluster/'
         clustering_features_eqloud = compute_cluster_features(
@@ -242,26 +242,26 @@ def main(cfg: Config):
 
 
         lg.info("Generating labels...")
-        get_labels_all_dirs(
-            source_dir=rms_mono_dir,
-            label_file_path=label_file_path
-        )
-        get_labels_all_dirs(
-            source_dir=median_mono_dir,
-            label_file_path=label_file_path
-        )
+        #get_labels_all_dirs(
+        #    source_dir=rms_mono_dir,
+        #    label_file_path=label_file_path
+        #)
+        #get_labels_all_dirs(
+        #    source_dir=median_mono_dir,
+        #    label_file_path=label_file_path
+        #)
         get_labels_all_dirs(
             source_dir=cluster_mono_dir,
             label_file_path=label_file_path
         )
-        get_labels_all_dirs(
-            source_dir=rms_eqloud_dir,
-            label_file_path=label_file_path
-        )
-        get_labels_all_dirs(
-            source_dir=median_eqloud_dir,
-            label_file_path=label_file_path
-        )
+        #get_labels_all_dirs(
+        #    source_dir=rms_eqloud_dir,
+        #    label_file_path=label_file_path
+        #)
+        #get_labels_all_dirs(
+        #    source_dir=median_eqloud_dir,
+        #    label_file_path=label_file_path
+        #)
         get_labels_all_dirs(
             source_dir=cluster_eqloud_dir,
             label_file_path=label_file_path
@@ -283,30 +283,30 @@ def main(cfg: Config):
     lg.info("Extracting features and classifying...")
     results = {}
     if cfg.amplitude_norm_toggle:
-        rms_mono_train = extract_all_features(source_dir=f'{rms_mono_dir}train/', cfg=cfg)
-        rms_mono_test = extract_all_features(source_dir=f'{rms_mono_dir}test/', cfg=cfg)
-        results['rms_mono'] = evaluate(rms_mono_train, read_labels(f'{rms_mono_dir}train/labels.csv'), rms_mono_test, read_labels(f'{rms_mono_dir}test/labels.csv'), cfg)
-        lg.info('RMS (mono) - OK')
-
-        median_mono_train = extract_all_features(source_dir=f'{median_mono_dir}train/', cfg=cfg)
-        median_mono_test = extract_all_features(source_dir=f'{median_mono_dir}test/', cfg=cfg)
-        results['median_mono'] = evaluate(median_mono_train, read_labels(f'{median_mono_dir}train/labels.csv'), median_mono_test, read_labels(f'{median_mono_dir}test/labels.csv'), cfg)
-        lg.info('MEDIAN (mono) - OK')
+        #rms_mono_train = extract_all_features(source_dir=f'{rms_mono_dir}train/', cfg=cfg)
+        #rms_mono_test = extract_all_features(source_dir=f'{rms_mono_dir}test/', cfg=cfg)
+        #results['rms_mono'] = evaluate(rms_mono_train, read_labels(f'{rms_mono_dir}train/labels.csv'), rms_mono_test, read_labels(f'{rms_mono_dir}test/labels.csv'), cfg)
+        #lg.info('RMS (mono) - OK')
+#
+        #median_mono_train = extract_all_features(source_dir=f'{median_mono_dir}train/', cfg=cfg)
+        #median_mono_test = extract_all_features(source_dir=f'{median_mono_dir}test/', cfg=cfg)
+        #results['median_mono'] = evaluate(median_mono_train, read_labels(f'{median_mono_dir}train/labels.csv'), median_mono_test, read_labels(f'{median_mono_dir}test/labels.csv'), cfg)
+        #lg.info('MEDIAN (mono) - OK')
 
         cluster_mono_train = extract_all_features(source_dir=f'{cluster_mono_dir}train/', cfg=cfg)
         cluster_mono_test = extract_all_features(source_dir=f'{cluster_mono_dir}test/', cfg=cfg)
         results['cluster_mono'] = evaluate(cluster_mono_train, read_labels(f'{cluster_mono_dir}train/labels.csv'), cluster_mono_test, read_labels(f'{cluster_mono_dir}test/labels.csv'), cfg)
         lg.info('CLUSTER (mono) - OK')
 
-        rms_eqloud_train = extract_all_features(source_dir=f'{rms_eqloud_dir}train/', cfg=cfg)
-        rms_eqloud_test = extract_all_features(source_dir=f'{rms_eqloud_dir}test/', cfg=cfg)
-        results['rms_eqloud'] = evaluate(rms_eqloud_train, read_labels(f'{rms_eqloud_dir}train/labels.csv'), rms_eqloud_test, read_labels(f'{rms_eqloud_dir}test/labels.csv'), cfg)
-        lg.info('RMS (eqloud) - OK')
-
-        median_eqloud_train = extract_all_features(source_dir=f'{median_eqloud_dir}train/', cfg=cfg)
-        median_eqloud_test = extract_all_features(source_dir=f'{median_eqloud_dir}test/', cfg=cfg)
-        results['median_eqloud'] = evaluate(median_eqloud_train, read_labels(f'{median_eqloud_dir}train/labels.csv'), median_eqloud_test, read_labels(f'{median_eqloud_dir}test/labels.csv'), cfg)
-        lg.info('MEDIAN (eqloud) - OK')
+        #rms_eqloud_train = extract_all_features(source_dir=f'{rms_eqloud_dir}train/', cfg=cfg)
+        #rms_eqloud_test = extract_all_features(source_dir=f'{rms_eqloud_dir}test/', cfg=cfg)
+        #results['rms_eqloud'] = evaluate(rms_eqloud_train, read_labels(f'{rms_eqloud_dir}train/labels.csv'), rms_eqloud_test, read_labels(f'{rms_eqloud_dir}test/labels.csv'), cfg)
+        #lg.info('RMS (eqloud) - OK')
+#
+        #median_eqloud_train = extract_all_features(source_dir=f'{median_eqloud_dir}train/', cfg=cfg)
+        #median_eqloud_test = extract_all_features(source_dir=f'{median_eqloud_dir}test/', cfg=cfg)
+        #results['median_eqloud'] = evaluate(median_eqloud_train, read_labels(f'{median_eqloud_dir}train/labels.csv'), median_eqloud_test, read_labels(f'{median_eqloud_dir}test/labels.csv'), cfg)
+        #lg.info('MEDIAN (eqloud) - OK')
 
         cluster_eqloud_train = extract_all_features(source_dir=f'{cluster_eqloud_dir}train/', cfg=cfg)
         cluster_eqloud_test = extract_all_features(source_dir=f'{cluster_eqloud_dir}test/', cfg=cfg)
@@ -401,7 +401,7 @@ if __name__ == "__main__":
             bandpass_toggle=False,
             fourth_filter_toggle=False,
             amplitude_norm_toggle=False,
-            result_filename='raw_classification.csv'
+            result_filename='_validation_baseline.csv'
         )
 
         full = Config(
@@ -409,9 +409,10 @@ if __name__ == "__main__":
             bandpass_toggle=True,
             fourth_filter_toggle=True,
             amplitude_norm_toggle=True,
-            result_filename='full_classification.csv'
+            result_filename='_validation_full.csv'
         )
-
+        main(cfg=raw)
         main(cfg=full)
+
     elif cfg.run_method == "classification":
         main_eval_only()
