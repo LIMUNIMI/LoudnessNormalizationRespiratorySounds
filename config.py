@@ -11,11 +11,11 @@ class Config:
 
     # Audio Processing Macros
     target_duration : float = 2.0
-    bandpass_frequency : float = 965.0
-    bandpass_bandwidth : float = 1930.0
+    bandpass_frequency : float = 530.0 # This to 530.0
+    bandpass_bandwidth : float = 940.0 # This to 940.0
     highpass_frequency : float = 300
     lowpass_frequency : float = 1800.0
-    window_size : float = 0.5 # This to 0.5
+    window_size : float = 0.2 # This to 0.2
     hop : float = 0.010
 
     # Feature Extraction Macros
