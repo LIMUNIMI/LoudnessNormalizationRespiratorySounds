@@ -31,11 +31,13 @@ def process_file_for_cluster(p: str, sample_rate: int, loader_fn: str,
 
     feature_map = {
         "rms": es.RMS()(y),
-        "zcr": es.ZeroCrossingRate()(y),
-        "centroid": es.Centroid()(spec),
-        "flux": es.Flux()(spec),
-        "rolloff": es.RollOff()(spec),
-        "flatness": es.Flatness()(spec)
+        "loudness": es.Loudness()(y),
+        "energy": es.Energy()(y)
+        #"zcr": es.ZeroCrossingRate()(y),
+        #"centroid": es.Centroid()(spec),
+        #"flux": es.Flux()(spec),
+        #"rolloff": es.RollOff()(spec),
+        #"flatness": es.Flatness()(spec)
     }
 
     return [feature_map[f] for f in features if f in feature_map]

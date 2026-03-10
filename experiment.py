@@ -232,12 +232,14 @@ def main(cfg: Config):
     if cfg.amplitude_norm_toggle:
         split_train_test_dirs(
             source_dir=f'{amplitude_norm_directory}mono/',
-            split_file_path=split_file_path
+            split_file_path=split_file_path,
+            mode="all"
         )
 
         split_train_test_dirs(
             source_dir=f'{amplitude_norm_directory}eqloud/',
-            split_file_path=split_file_path
+            split_file_path=split_file_path,
+            mode="all"
         )
 
 
