@@ -15,3 +15,4 @@ train_only_ref_coral.py
 test_utils.py
 analyze_dataset.py
 noise_stress.py
+class_experiment.py
