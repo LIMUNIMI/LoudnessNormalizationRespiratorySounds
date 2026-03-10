@@ -58,13 +58,14 @@ def extract_features(audio: np.ndarray, cfg) -> np.ndarray:
 
     # Energy Features
     rms = es.RMS()(audio)
+    loudness = es.Loudness()(audio)
     zcr = es.ZeroCrossingRate()(audio)
     centroid = es.Centroid()(np.abs(es.Spectrum()(es.Windowing(type='hann')(audio[:min(len(audio), 2048)]))))
 
     return np.concatenate([
         feat_mean, feat_std,
         logmel_mean, logmel_std,
-        [rms, zcr, centroid]
+        [rms, loudness, zcr, centroid]
     ]).astype(np.float32)
 
 
